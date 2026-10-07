@@ -1,0 +1,38 @@
+[
+  {
+    "id": "play-1",
+    "game_id": "374173",
+    "game_title": "Star Wars: The Deckbuilding Game",
+    "date": "2026-09-26",
+    "players": ["Darren", "Guest"],
+    "player_count": 2,
+    "winner": "Darren",
+    "duration": 45,
+    "notes": "Close battle in the Outer Rim",
+    "bgg_synced": true
+  },
+  {
+    "id": "play-2",
+    "game_id": "167355",
+    "game_title": "Nemesis",
+    "date": "2026-09-12",
+    "players": ["Darren", "Alex", "Mike", "Sam"],
+    "player_count": 4,
+    "winner": "Intruders",
+    "duration": 150,
+    "notes": "Ship self-destruct sequence activated!",
+    "bgg_synced": true
+  },
+  {
+    "id": "play-3",
+    "game_id": "366013",
+    "game_title": "Heat: Pedal to the Metal",
+    "date": "2026-08-29",
+    "players": ["Darren", "Alex", "Chris", "Dave"],
+    "player_count": 4,
+    "winner": "Alex",
+    "duration": 65,
+    "notes": "USA track with championship cards",
+    "bgg_synced": true
+  }
+]
