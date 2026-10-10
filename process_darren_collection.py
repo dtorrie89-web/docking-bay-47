@@ -662,10 +662,10 @@ def main():
             ])
     print(f"Saved Google Sheets CSV to: {DATA_DIR / 'games.csv'}")
 
-    # Auto-sync index.html
-    index_html_path = BASE_DIR / "index.html"
-    if index_html_path.exists():
-        with open(index_html_path, "r", encoding="utf-8") as f:
+    # Auto-sync app.html
+    app_html_path = BASE_DIR / "app.html"
+    if app_html_path.exists():
+        with open(app_html_path, "r", encoding="utf-8") as f:
             html = f.read()
 
         # Update chip counts in HTML
@@ -697,9 +697,15 @@ def main():
             if e_idx != -1:
                 html = html[:s_idx + len(s_marker)] + json.dumps(games_sorted) + html[e_idx:]
 
-        with open(index_html_path, "w", encoding="utf-8") as f:
+        with open(app_html_path, "w", encoding="utf-8") as f:
             f.write(html)
-        print("Synced updated collection & chips into index.html.")
+        print("Synced updated collection & chips into app.html.")
+
+    # Auto-encrypt app.html into AES-256 vault index.html
+    encrypt_script = BASE_DIR / "encrypt_site.js"
+    if encrypt_script.exists():
+        import subprocess
+        subprocess.run(["node", str(encrypt_script), "gamenight"], check=False)
 
     # Generate google_apps_script.js
     generate_apps_script(games_sorted, plays_list)
