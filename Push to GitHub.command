@@ -1,13 +1,13 @@
 #!/bin/bash
 # =========================================================================
-# Docking Bay 47 - 1-Click Push to GitHub
+# Docking Bay 94 - 1-Click Push to GitHub
 # =========================================================================
 
 DIR="$(cd "$(dirname "$0")" && pwd)"
 cd "$DIR"
 
 echo "=========================================================="
-echo " Docking Bay 47 - Pushing to GitHub"
+echo " Docking Bay 94 - Pushing to GitHub"
 echo "=========================================================="
 echo " Repository: https://github.com/dtorrie89-web/docking-bay-47.git"
 echo ""

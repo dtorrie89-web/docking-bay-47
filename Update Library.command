@@ -1,6 +1,6 @@
 #!/bin/bash
 # =========================================================================
-# Docking Bay 47 - 1-Click Collection & Image Updater
+# Docking Bay 94 - 1-Click Collection & Image Updater
 # Double-click this file in Finder anytime you drop in an updated CSV!
 # =========================================================================
 
@@ -8,7 +8,7 @@ DIR="$(cd "$(dirname "$0")" && pwd)"
 cd "$DIR"
 
 echo "================================================"
-echo " Docking Bay 47 - Refreshing Game Collection"
+echo " Docking Bay 94 - Refreshing Game Collection"
 echo "================================================"
 echo ""
 

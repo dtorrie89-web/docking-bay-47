@@ -1,4 +1,4 @@
-# 👑 Board Game Night Hub
+# 🪐 Docking Bay 94 Game Night Hub
 
 A complete hosting, library management, and voting toolkit for bi-weekly board game nights.
 

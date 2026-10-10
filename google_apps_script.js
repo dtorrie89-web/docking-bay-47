@@ -2,12 +2,12 @@
 
 /**
  * =========================================================================
- * DOCKING BAY 47 GAME NIGHT - GOOGLE SHEETS HUB & SYNC BACKEND
+ * DOCKING BAY 94 GAME NIGHT - GOOGLE SHEETS HUB & SYNC BACKEND
  * =========================================================================
  *
  * HOW TO SET UP (Takes ~1 minute):
  * 1. Open Google Sheets (https://sheets.new).
- * 2. Name your spreadsheet: "Docking Bay 47 Game Night"
+ * 2. Name your spreadsheet: "Docking Bay 94 Game Night"
  * 3. In the top menu: Extensions > Apps Script
  * 4. Paste this entire script, replacing any code in the editor.
  * 5. Select "setupGameNightSpreadsheet" from the dropdown and click "Run".
