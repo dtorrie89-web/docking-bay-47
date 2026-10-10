@@ -10,3 +10,7 @@ data/
 cache/
 *.pem
 *.key
+
+# Store PDF manuals in Google Drive only (not in Git)
+manuals/
+*.pdf
