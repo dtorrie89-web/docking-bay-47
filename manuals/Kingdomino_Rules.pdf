@@ -1,0 +1,474 @@
+<!DOCTYPE html>
+<html lang="en-gb" dir="ltr">
+    <head>
+        <meta name="viewport" content="width=device-width, initial-scale=1, user-scalable=yes"">
+        <!--<base href="https://blueorangegames.com/" />-->
+        <meta http-equiv="content-type" content="text/html; charset=utf-8" />
+        <meta name="keywords" content=" play hot games" />
+        <meta name="author" content="Blue Orange Games" />
+        <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+        <meta name="description" content=". Discover and play hot games by Blue Orange! We create, publish and promote award-winning games with high quality and play value. Our award winning collection promises fun for all ages!" />
+        <title>Blue Orange Games - Simply Fun for All - </title>
+        <link href="/webroot/img/favicon.ico" rel="shortcut icon" type="image/vnd.microsoft.icon" />
+        <link href="/webroot/public/modules/mod_slideshowck/themes/default/css/camera.css" rel="stylesheet" type="text/css" />
+        <link href="/webroot/public/plugins/system/maximenuckmobile/themes/mobiletheme3/maximenuckmobile.css" rel="stylesheet" type="text/css" />
+        <link href="/webroot/public/css/main.css" rel="stylesheet" type="text/css" />
+        <link href="/webroot/public/modules/mod_maximenuck/themes/bo/css/moo_maximenuhck.css" rel="stylesheet" type="text/css" />
+        <link href="/webroot/public/modules/mod_maximenuck/themes/bo/css/maximenuhck.php?monid=maximenuck" rel="stylesheet" type="text/css" />
+        <link href="/webroot/public/modules/mod_maximenuck/templatelayers/beez_20-position1.css" rel="stylesheet" type="text/css" />
+        <link href="/webroot/public/modules/mod_maximenuck/assets/maximenuresponsiveck.css" rel="stylesheet" type="text/css" />
+        <link href="/webroot/public/media/plg_system_kickgdpr/css/cookieconsent.min.css?6b62a1a750ca7fc2d45d5a320594d5b0" rel="stylesheet" type="text/css" />
+        <link href="/webroot/jstree/themes/default/style.min.css" rel="stylesheet" />
+        <link href="/webroot/public/contactform/gcore-ui.css" media="screen" rel="stylesheet" type="text/css" />
+        <link href="/webroot/public/contactform/gtooltip/gtooltip.css" media="screen" rel="stylesheet" type="text/css" />
+        <link href="/webroot/public/contactform/gtabs/gtabs.css" media="screen" rel="stylesheet" type="text/css" />
+        <link href="/webroot/public/contactform/gsliders/gsliders.css" media="screen" rel="stylesheet" type="text/css" />
+        <link href="/webroot/public/contactform/gdropdown/gdropdown.css" media="screen" rel="stylesheet" type="text/css" />
+        <style type="text/css">
+            #camera_wrap_91 .camera_pag_ul li img, #camera_wrap_91 .camera_thumbs_cont ul li > img {
+                height:75px;
+            }
+            #camera_wrap_91 .camera_caption {
+                display: block;
+                position: absolute;
+            }
+            #camera_wrap_91 .camera_caption > div {
+
+            }
+            #camera_wrap_91 .camera_caption > div div.camera_caption_title {
+
+            }
+            #camera_wrap_91 .camera_caption > div div.camera_caption_desc {
+
+            }
+
+            @media screen and (max-width: 480px) {
+                #camera_wrap_91 .camera_caption {
+                    font-size: 0.6em !important;
+                }
+
+            }
+            .mobilebarmaximenuck {
+                display: none;
+            }
+            @media only screen and (max-width:640px){
+                #maximenuck {
+                    display: none !important;
+                }
+                .mobilebarmaximenuck {
+                    display: block;
+                }
+                .hidemenumobileck {
+                    display: none !important;
+                }
+            }
+            #maximenuck div.floatck, #maximenuck ul.maximenuck li:hover div.floatck div.floatck, #maximenuck ul.maximenuck li:hover div.floatck:hover div.floatck div.floatck,
+            #maximenuck ul.maximenuck li.sfhover div.floatck div.floatck, #maximenuck ul.maximenuck li.sfhover div.floatck.sfhover div.floatck div.floatck {
+                left: auto !important;
+                height: auto;
+                width: auto;
+                display: none;
+            }
+
+            #maximenuck ul.maximenuck li:hover div.floatck, #maximenuck ul.maximenuck li:hover div.floatck li:hover div.floatck, #maximenuck ul.maximenuck li:hover div.floatck li:hover div.floatck li:hover div.floatck,
+            #maximenuck ul.maximenuck li.sfhover div.floatck, #maximenuck ul.maximenuck li.sfhover div.floatck li.sfhover div.floatck, #maximenuck ul.maximenuck li.sfhover div.floatck li.sfhover div.floatck li.sfhover div.floatck {
+                display: block;
+                left: auto !important;
+                height: auto;
+                width: auto;
+            }
+
+            div#maximenuck ul.maximenuck li.maximenuck.nodropdown div.floatck,
+            div#maximenuck ul.maximenuck li.maximenuck div.floatck li.maximenuck.nodropdown div.floatck,
+            div#maximenuck .maxipushdownck div.floatck div.floatck {
+                display: block !important;
+            }
+            @media screen and (max-width: 640px) {
+                div#maximenuck ul.maximenuck li.maximenuck.nomobileck, div#maximenuck .maxipushdownck ul.maximenuck2 li.maximenuck.nomobileck {
+                    display: none !important;
+                }
+            }
+            @media screen and (min-width: 641px) {
+                div#maximenuck ul.maximenuck li.maximenuck.nodesktopck, div#maximenuck .maxipushdownck ul.maximenuck2 li.maximenuck.nodesktopck {
+                    display: none !important;
+                }
+            }
+        </style>
+        <script src="/webroot/public/media/jui/js/jquery.min.js?6b62a1a750ca7fc2d45d5a320594d5b0" type="text/javascript"></script>
+        <script src="/webroot/public/media/jui/js/jquery-noconflict.js?6b62a1a750ca7fc2d45d5a320594d5b0" type="text/javascript"></script>
+        <script src="/webroot/public/media/jui/js/jquery-migrate.min.js?6b62a1a750ca7fc2d45d5a320594d5b0" type="text/javascript"></script>
+        <script src="/webroot/public/media/com_slideshowck/assets/jquery.easing.1.3.js" type="text/javascript"></script>
+        <script src="/webroot/public/media/com_slideshowck/assets/camera.min.js?ver=2.5.1" type="text/javascript"></script>
+        <script src="/webroot/public/media/system/js/caption.js?6b62a1a750ca7fc2d45d5a320594d5b0" type="text/javascript"></script>
+        <script src="/webroot/public/plugins/system/maximenuckmobile/assets/maximenuckmobile.js" type="text/javascript"></script>
+        <script src="/webroot/public/js/main.js?v=1701684722" type="text/javascript"></script>
+        <script src="/webroot/public/js/jquery-ui-1.11.4/jquery-ui.min.js?v=1701684722" type="text/javascript"></script>
+        <script src="/webroot/public/media/jui/js/jquery.ui.core.min.js?6b62a1a750ca7fc2d45d5a320594d5b0" type="text/javascript"></script>
+        <script src="/webroot/public/modules/mod_maximenuck/assets/maximenuck.v8.js" type="text/javascript"></script>
+        <script src="/webroot/public/modules/mod_maximenuck/assets/fancymenuck.v8.js" type="text/javascript"></script>
+        <script src="/webroot/public/media/plg_system_kickgdpr/js/cookieconsent.min.js?6b62a1a750ca7fc2d45d5a320594d5b0" type="text/javascript"></script>
+        <script src="/webroot/jstree/jstree.min.js"></script>
+        <script type="text/javascript">
+
+            jQuery(document).ready(function () {
+                new Slideshowck('#camera_wrap_91', {
+                    height: '46%',
+                    minHeight: '150',
+                    pauseOnClick: false,
+                    hover: 1,
+                    fx: 'simpleFade',
+                    loader: 'none',
+                    pagination: 0,
+                    thumbnails: 0,
+                    thumbheight: 75,
+                    thumbwidth: 100,
+                    time: 5000,
+                    transPeriod: 1000,
+                    alignment: 'center',
+                    autoAdvance: 1,
+                    mobileAutoAdvance: 1,
+                    portrait: 0,
+                    barDirection: 'leftToRight',
+                    imagePath: '/media/com_slideshowck/images/',
+                    lightbox: 'mediaboxck',
+                    fullpage: 0,
+                    mobileimageresolution: '0',
+                    navigationHover: true,
+                    mobileNavHover: true,
+                    navigation: true,
+                    playPause: true,
+                    barPosition: 'bottom',
+                    responsiveCaption: 0,
+                    keyboardNavigation: 0,
+                    titleInThumbs: 0,
+                    container: ''
+                });
+            });
+
+            jQuery(window).on('load', function () {
+                new JCaption('img.caption');
+            });
+            jQuery(document).ready(function ($) {
+                $('#maximenuck').MobileMaxiMenu({usemodules: 0, container: 'menucontainer', showdesc: 0, showlogo: 0, useimages: 0, menuid: 'maximenuck', showmobilemenutext: 'default', mobilemenutext: 'Menu', mobilebackbuttontext: 'Back', displaytype: 'flat', menubarbuttoncontent: '', topbarbuttoncontent: '', displayeffect: 'normal'});
+            });
+            jQuery(document).ready(function (jQuery) {
+                jQuery('#maximenuck').DropdownMaxiMenu({fxtransition: 'linear', dureeIn: 0, dureeOut: 500, menuID: 'maximenuck', testoverflow: '0', orientation: 'horizontal', behavior: 'mouseover', opentype: 'open', fxdirection: 'normal', directionoffset1: '30', directionoffset2: '30', showactivesubitems: '0', ismobile: 0, menuposition: '0', effecttype: 'dropdown', topfixedeffect: '1', topfixedoffset: '', clickclose: '0', fxduration: 500});
+            });
+            jQuery(window).load(function () {
+                jQuery('#maximenuck').FancyMaxiMenu({fancyTransition: 'linear', fancyDuree: 500});
+            });
+
+// Start Cookie Alert
+            window.addEventListener("load", function () {
+                window.cookieconsent.initialise({
+                    "palette": {
+                        "popup": {
+                            "background": "#65afe0",
+                            "text": "#ffffff"
+                        },
+                        "button": {
+                            "background": "#f5c400",
+                            "text": "#000000",
+                        }
+                    },
+                    "theme": "block",
+                    "position": "bottom",
+                    "type": "info",
+                    "revokable": false,
+                    "revokeBtn": "<div class=\"cc-revoke {{classes}}\">Cookie Policy</div>",
+                    "content": {
+                        "message": "This website uses cookies to ensure you get the best experience on our website",
+                        "dismiss": "Got it!",
+                        "allow": "Allow cookies",
+                        "deny": "Refuse cookies",
+                        "link": "Learn more",
+                        "imprint_link": "Imprint",
+                        "href": "https://blueorangegames.com/index.php/privacy-policy",
+                    },
+                    "cookie": {
+                        "expiryDays": 365
+                    },
+                    "elements": {
+                        "messagelink": "<span id=\"cookieconsent:desc\" class=\"cc-message\">{{message}}<a aria-label=\"learn more about cookies\" role=\"button\" tabindex=\"0\" class=\"cc-link\" href=\"https://blueorangegames.com/index.php/privacy-policy\" target=\"_self\">{{link}}</a></span>"
+                    },
+                    onInitialise: function (status) {
+                        handleCookies(status);
+                    },
+                    onStatusChange: function (status, chosenBefore) {
+                        handleCookies(status);
+                    },
+                    onRevokeChoice: function () {
+                        handleCookies(status);
+                    }
+                })
+            });
+// End Cookie Alert
+            function handleCookies(status) {
+            }
+
+// Init handleCookies if the user doesn't choose any options
+            if (document.cookie.split(';').filter(function (item) {
+                return item.indexOf('cookieconsent_status=') >= 0
+            }).length == 0) {
+                handleCookies('notset');
+            }
+            ;
+        </script>
+        <script src="https://www.google.com/recaptcha/api.js?onload=onloadGRCallback&render=explicit" async defer></script>
+    </head>
+    <body class="index site">
+        <header class="header_container">
+            <div id="top_header">
+                <div id="social">
+                    <a arial-label="tiktok" href="https://www.tiktok.com/@blueorangegames?lang=en" target="_blank"><img alt="tiktok" src="/webroot/public/images/tiktok.png" /></a>
+                    <a arial-label="facebook" href="https://www.facebook.com/BlueOrangeGamesUSA" target="_blank"><img alt="facebook" src="/webroot/public/images/facebook_n.png" /></a>
+                    <a arial-label="twitter" href="https://twitter.com/BlueOrangeGames" target="_blank"><img alt="twitter" src="/webroot/public/images/twitter_n.png" /></a>
+                    <a arial-label="youtube" href="https://www.youtube.com/user/BlueOrangeUSA" target="_blank"><img alt="youtube" src="/webroot/public/images/youtube_n.png" /></a>
+                    <a arial-label="pinterest" href="https://www.pinterest.com/blueorangegames/" target="_blank"><img alt="pinterest" src="/webroot/public/images/pinterest_n.png" /></a>
+                    <a arial-label="instagram" href="http://instagram.com/blueorangegames" target="_blank"><img alt="instagram" src="/webroot/public/images/instagram_n.png" /></a>
+                </div>
+            </div>
+            <div id="menu_banner">
+                <div id="menu_banner_inside">
+                    <div id="logo"><a arial-label="home" href="/"><img alt="blue orange logo : go back to home page" src="/webroot/public/images/bo_logo.png" /></a></div>
+                    <div id="menu"><!-- debut Maximenu CK -->
+                        <div class="maximenuckh ltr" id="maximenuck" style="z-index:10;">
+                            <ul itemscope itemtype="http://www.schema.org/SiteNavigationElement" class=" maximenuck">
+                                <li itemprop="name" data-level="1" class="maximenuck item102 first parent level1 " style="z-index : 12000;" ><a itemprop="url"  data-hover="Games" class="maximenuck " href="/games"><span class="titreck"  data-hover="Games"><span class="titreck-text"><span class="titreck-title">Games</span></span></span></a>
+                                    <div class="floatck" style=""><div class="maxidrop-main" style=""><div class="maximenuck2 first " >
+                                                <ul class="maximenuck2">
+                                                    <li itemprop="name" data-level="2" class="maximenuck item214 first level2 " style="z-index : 11999;" ><a itemprop="url"  data-hover="All Games" class="maximenuck " href="/games"><span class="titreck"  data-hover="All Games"><span class="titreck-text"><span class="titreck-title">All Games</span></span></span></a></li>
+                                                    <li itemprop="name" data-level="2" class="maximenuck item222 level2 " style="z-index : 12000;" ><a itemprop="url"  data-hover="New releases" class="maximenuck " href="/games/new-releases"><span class="titreck"  data-hover="New releases"><span class="titreck-text"><span class="titreck-title">New releases</span></span></span></a></li>
+                                                    <li itemprop="name" data-level="2" class="maximenuck item222 level2 " style="z-index : 11998;" ><a itemprop="url"  data-hover="Skill Toys and Outdoor" class="maximenuck " href="/games/skill-toys-and-outdoor"><span class="titreck"  data-hover="Skill Toys and Outdoor"><span class="titreck-text"><span class="titreck-title">Skill Toys and Outdoor</span></span></span></a></li>
+                                                    <li itemprop="name" data-level="2" class="maximenuck item222 level2 " style="z-index : 11997;" ><a itemprop="url"  data-hover="Brainteasers" class="maximenuck " href="/games/brainteasers"><span class="titreck"  data-hover="Brainteasers"><span class="titreck-text"><span class="titreck-title">Brainteasers</span></span></span></a></li>
+                                                    <li itemprop="name" data-level="2" class="maximenuck item222 level2 " style="z-index : 11997;" ><a itemprop="url"  data-hover="Iello games" class="maximenuck " href="/games/iello"><span class="titreck"  data-hover="Iello games"><span class="titreck-text"><span class="titreck-title">Iello games</span></span></span></a></li>
+                                                    <!--<li itemprop="name" data-level="2" class="maximenuck item223 level2 " style="z-index : 11997;" ><a itemprop="url"  data-hover="Out of Print Games" class="maximenuck " href="/games/out-of-print"><span class="titreck"  data-hover="Out of Print Games"><span class="titreck-text"><span class="titreck-title">Out of Print Games</span></span></span></a></li>-->
+                                                    <!--<li itemprop="name" data-level="2" class="maximenuck item223 level2 " style="z-index : 11997;" ><a itemprop="url"  data-hover="Coming Soon..." class="maximenuck " href="/games/coming-soon"><span class="titreck"  data-hover="Coming Soon..."><span class="titreck-text"><span class="titreck-title">Coming Soon...</span></span></span></a></li>-->
+                                                    <li itemprop="name" data-level="2" class="maximenuck item217 last level2 " style="z-index : 11996;" ><a itemprop="url"  data-hover="Videos" class="maximenuck " href="/games/videos-collection"><span class="titreck"  data-hover="Videos"><span class="titreck-text"><span class="titreck-title">Videos</span></span></span></a></li>
+                                                </ul>
+                                            </div>
+                                        </div>
+                                    </div>
+                                </li><li itemprop="name" data-level="1" class="maximenuck item107 level1 " style="z-index : 11995;" ><a itemprop="url"  data-hover="Play" class="maximenuck " href="/play-online"><span class="titreck"  data-hover="Play"><span class="titreck-text"><span class="titreck-title">Play</span></span></span></a>
+                                </li><li itemprop="name" data-level="1" class="maximenuck item103 level1 " style="z-index : 11994;" ><a itemprop="url"  data-hover="Shop" class="maximenuck " href="/shop-online"><span class="titreck"  data-hover="Shop"><span class="titreck-text"><span class="titreck-title">Shop</span></span></span></a>
+                                </li><li itemprop="name" data-level="1" class="maximenuck item132 parent level1 " style="z-index : 11993;" ><a itemprop="url"  data-hover="About us" class="maximenuck " href="/about-us"><span class="titreck"  data-hover="About us"><span class="titreck-text"><span class="titreck-title">About us</span></span></span></a>
+                                    <div class="floatck" style=""><div class="maxidrop-main" style=""><div class="maximenuck2 first " >
+                                                <ul class="maximenuck2">
+                                                    <!--<li itemprop="name" data-level="2" class="maximenuck item202 first level2 " style="z-index : 11993;" ><a itemprop="url"  data-hover="25 Years Anniversary" class="maximenuck " href="/about-us/25-years-anniversary"><span class="titreck"  data-hover="About Us"><span class="titreck-text"><span class="titreck-title">25 Years Anniversary</span></span></span></a></li>-->
+                                                    <li itemprop="name" data-level="2" class="maximenuck item202 first level2 " style="z-index : 11993;" ><a itemprop="url"  data-hover="2026 New Releases" class="maximenuck " href="/about-us/2026-new-releases"><span class="titreck"  data-hover="2026 New Releases"><span class="titreck-text"><span class="titreck-title">2026 New Releases</span></span></span></a></li>
+                                                    <li itemprop="name" data-level="2" class="maximenuck item201 first level2 " style="z-index : 11992;" ><a itemprop="url"  data-hover="About Us" class="maximenuck " href="/about-us/about-us"><span class="titreck"  data-hover="About Us"><span class="titreck-text"><span class="titreck-title">About Us</span></span></span></a></li>
+                                                    <li itemprop="name" data-level="2" class="maximenuck item199 last level2 " style="z-index : 11991;" ><a itemprop="url"  data-hover="Safety" class="maximenuck " href="/about-us/safety"><span class="titreck"  data-hover="Safety"><span class="titreck-text"><span class="titreck-title">Safety</span></span></span></a></li>
+                                                    <li itemprop="name" data-level="2" class="maximenuck item199 last level2 " style="z-index : 11991;" ><a itemprop="url"  data-hover="KOT Godzilla Championship" class="maximenuck " href="/kot-godzilla-championship"><span class="titreck"  data-hover="KOT Godzilla Championship"><span class="titreck-text"><span class="titreck-title">KOT Godzilla Championship</span></span></span></a></li>
+                                                </ul>
+                                            </div></div></div>
+                                </li><li itemprop="name" data-level="1" class="maximenuck item104 level1 " style="z-index : 11990;" ><a itemprop="url"  data-hover="Store locator" class="maximenuck " href="/store-locator"><span class="titreck"  data-hover="Store locator"><span class="titreck-text"><span class="titreck-title">Store locator</span></span></span></a>
+                                </li><li itemprop="name" data-level="1" class="maximenuck item312 last level1 " style="z-index : 11989;" ><a itemprop="url"  data-hover="Sign Up" class="maximenuck " href="http://eepurl.com/caGvv5" target="_blank" ><span class="titreck"  data-hover="Sign Up"><span class="titreck-text"><span class="titreck-title">Sign Up</span></span></span></a></li>
+                                </li><li itemprop="name" data-level="1" class="maximenuck item313 last level1 " style="z-index : 11988;" ><a itemprop="url"  data-hover="Blog" class="maximenuck " href="https://blog.blueorangegames.com/" target="_blank" ><span class="titreck"  data-hover="Blog"><span class="titreck-text"><span class="titreck-title">Blog</span></span></span></a></li>
+                            </ul>
+                        </div>
+                        <!-- fin maximenuCK -->
+                    </div>
+                    <div id="search_div">		<div class="moduletable">
+                            <div id="mod_bosearch2">
+                                <form name="bosearchf" id="bosearchf" action ="/search" method="post">
+
+                                    <input id="mod-finder-searchword" aria-label="text to search" class="inputbox" type="text" size="25" name="q" placeholder="Search" />
+
+                                    <!--<button id="go_search" class="button finder" type="submit">Go</button>-->
+                                </form>
+                            </div>
+                            <script type="text/javascript">
+            //jQuery('#mod-finder-searchword').watermark('Required information');
+            //console.log(jQuery('#mod-finder-searchword').length);
+            jQuery('#go_search').click(function ($) {
+                //location.href = '/index.php?option=com_bosearch&test=ok' ;
+                $('#bosearchf').submit();
+            }
+            );
+                            </script>		</div>
+                    </div>
+                </div>
+            </div>
+        </header>
+        <section class="main_container">
+                    </section>
+        <footer class="footer_container">
+            <div id="footer_container_content">
+                <a arial-label="awards" href="/about-us/awards-and-press?see=awards"><img alt="awards banner" id="awards_banner" src="/webroot/public/images/awards_banner.png" /></a>
+                <div id="awards_banner_replace"></div>
+                <!--<div class="footer-div menu">
+                </div>-->
+                <div class="footer-div menu">
+                    <div class="moduletable">
+                        <h3>Customer Service</h3>
+                        <ul class="nav menu mod-list">
+                            <li class="item-134"><a href="/store-locator" >Store Locator</a></li>
+                            <li class="item-150"><a href="/replacement-parts" >Missing Parts</a></li>
+                            <li class="item-152"><a href="/contact-us" >Contact Us</a></li>
+                            <li class="item-423"><a href="/games-goodies-more-new" >Games Goodies &amp; More</a></li>
+                            <li class="item-151"><a href="/games/download-rules" >Download Rules</a></li>
+                        </ul>
+                    </div>
+                </div>
+                <div class="footer-div menu">
+                    <div class="moduletable">
+                        <h3>For Retailers</h3>
+                        <ul class="nav menu mod-list">
+                            <li class="item-164"><a href="/us-retailers-tools" >U.S. Retailers Tools</a></li><li class="item-156"><a href="/international-retailers" >Int'l Retailers</a></li>
+                            <li class="item-218" style="display:none;"><a href="/catalog-tools" >Catalog &amp; Tools</a></li></ul>
+                    </div>
+                    <div class="otherlinkfootermenu">
+                        <p style="margin-top:10px;">
+                            <a arial-label="accessibility statement" class="footer_other_link" href="/accessibility-statement">Accessibility Statement</a><br />
+                        </p>
+                    </div>
+                </div>
+                <div class="footer-div menu newsletter">
+                    <h3>Retailers Newsletter</h3>
+                    <div class="modbonewsletter">
+                        <form name="modbonewsletter_form" id="modbonewsletter_form" action="" method="post">
+                            <table class="modbonewsletter">
+                                <tr><td class="modbonewsletter">
+                                        <input id="retailer_name" aria-label="retailer name" class="inputbox" type="text" name="retailer_name" value="Name of store, city & state" title="Retailer name">
+                                    </td></tr>
+                                <tr><td class="modbonewsletter">
+                                        <input id="retailer_mail" aria-label="retailer mail address" class="inputbox" type="text" name="retailer_mail" value="E-mail" title="E-mail">
+                                    </td></tr>
+                                <tr><td>
+                                        <div class="g-recaptcha-outer">
+                                            <div class="g-recaptcha-inner">
+                                                <div id="RecaptchaFieldNewsletterFooter" class="grecaptcha_footer"></div>
+                                            </div>
+                                        </div> 
+                                    </td></tr>
+                                <tr><td class="modbonewsletter_submit">
+                                        <input class="modbonewsletter_submit" id="modbonewsletter_submit" type="submit" value="Subscribe" name="Submit" />
+                                    </td></tr>
+                            </table>
+                        </form>
+                    </div>
+                    <script>
+                        var recaptcha_newsletter_footer;
+                        var recaptcha_newsletter_page;
+                        var recaptcha_contactform_page;
+                        var recaptcha_signupafterpurchase_page;
+                        function onloadGRCallback() {
+                            recaptcha_newsletter_footer = grecaptcha.render(
+                                    'RecaptchaFieldNewsletterFooter',
+                                    {
+                                        'sitekey': '6LdADCcTAAAAAAiIOmaaaLeBK4LxydNwbpTAGj--',
+                                        'size': 'compact',
+                                        'hl': 'en'
+                                    }
+                            );
+                            if (jQuery('#RecaptchaFieldNewsletterPage').length) {
+                                recaptcha_newsletter_page = grecaptcha.render(
+                                        'RecaptchaFieldNewsletterPage',
+                                        {
+                                            'sitekey': '6LdADCcTAAAAAAiIOmaaaLeBK4LxydNwbpTAGj--',
+                                            'size': 'compact',
+                                            'hl': 'en'
+                                        }
+                                );
+                            }
+                            if (jQuery('#RecaptchaFieldContactformPage').length) {
+                                recaptcha_contactform_page = grecaptcha.render(
+                                        'RecaptchaFieldContactformPage',
+                                        {
+                                            'sitekey': '6LdADCcTAAAAAAiIOmaaaLeBK4LxydNwbpTAGj--',
+                                            'size': 'compact',
+                                            'hl': 'en'
+                                        }
+                                );
+                            }
+                            if (jQuery('#RecaptchaFieldSignupafterpurchasePage').length) {
+                                recaptcha_signupafterpurchase_page = grecaptcha.render(
+                                        'RecaptchaFieldSignupafterpurchasePage',
+                                        {
+                                            'sitekey': '6LdADCcTAAAAAAiIOmaaaLeBK4LxydNwbpTAGj--',
+                                            'size': 'compact',
+                                            'hl': 'en'
+                                        }
+                                );
+                            }
+                            //jQuery('#g-recaptcha-response').attr('aria-hidden', true);
+                            //jQuery('#g-recaptcha-response').attr('aria-label', 'do not use');
+                            //jQuery('#g-recaptcha-response').attr('aria-readonly', true);
+                            //jQuery('#g-recaptcha-response-1').attr('aria-hidden', true);
+                            //jQuery('#g-recaptcha-response-1').attr('aria-label', 'do not use');
+                            //jQuery('#g-recaptcha-response-1').attr('aria-readonly', true);
+                        }
+                        jQuery(document).ready(function () {
+                            //console.log("document loaded");
+                            jQuery("#modbonewsletter_form").submit(function (event) {
+                                event.preventDefault();
+                                retailer_name = jQuery("#modbonewsletter_form #retailer_name").val();
+                                retailer_mail = jQuery("#modbonewsletter_form #retailer_mail").val();
+                                recaptcha = grecaptcha.getResponse(recaptcha_newsletter_footer);
+                                //console.log(grecaptcha.getResponse(recaptcha_newsletter_footer));
+                                jQuery("div.modbonewsletter").html('');
+                                jQuery("div.modbonewsletter").append('Please wait a few seconds...');
+                                jQuery.post("https://www.blueorangegames.com/bonewsletter/record", {name: retailer_name, mail: retailer_mail, recaptcha: recaptcha}, function (data) {
+                                    jQuery("div.modbonewsletter").html(data);
+                                });
+                            });
+                        });
+                    </script>
+
+                </div>
+                <div class="footer-div menu" style="position: relative;">
+                    <div class="moduletable">
+                        <h3>Schools & Educators</h3>
+                        <ul class="nav menu mod-list">
+                            <li class="item-154"><a href="/school-bundles" >School Discount</a></li></ul>
+                    </div>
+                    <div class="otherlinkfootermenu">
+                        <p style="margin-top:10px;">
+                            <a arial-label="site map" class="footer_other_link" href="/site-map">Site Map</a><br />
+                            <a arial-label="terms of use" class="footer_other_link" href="/terms-of-use">Terms of Use</a><br />
+                            <a arial-label="careers" class="footer_other_link" href="/careers">Careers</a>
+                        </p>
+                    </div>
+                    <img alt="clown fish" id="footerclownfish" src="/webroot/public/images/clownfish.png" />
+                </div>
+                <div style="clear:both;"></div>
+                <div id="footer_copyright">© 2010-2020 Blue Orange Games</div>
+            </div>
+        </footer>
+
+        <script>(function () {
+                var s = document.createElement("script");
+                s.setAttribute("data-account", "PC4WaolWIE");
+                s.setAttribute("src", "https://cdn.userway.org/widget.js");
+                document.body.appendChild(s);
+            })();</script><noscript>Enable JavaScript to ensure <a href="https://userway.org">website accessibility</a></noscript>
+
+        <script type="text/javascript">
+            jQuery(document).ready(function () {
+                jQuery('#online_retailer').change(function () {
+                    //alert(jQuery(this).val());
+                    if (jQuery(this).val() != 'start') {
+                        window.open(jQuery(this).val());
+                    }
+                });
+                jQuery('select[name="hear_about_us"]').change(function () {
+                    //alert(jQuery(this).val());
+                    if (jQuery(this).val() == 'other') {
+                        jQuery('#origin_other1_container_div').show();
+                    } else {
+                        jQuery('#origin_other1_container_div').hide();
+                    }
+                });
+                jQuery('#origin_other1_container_div').hide();
+                jQuery(".seemoreng").click(function () {
+                    //alert('test');
+                    event.preventDefault();
+                    jQuery.get("games/getnewgames", function (data) {
+                        jQuery("#hpnewimages").html(data);
+                        //console.log(data);
+                    });
+                });
+            });
+        </script>
+    </body>
+</html>

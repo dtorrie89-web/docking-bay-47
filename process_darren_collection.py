@@ -21,6 +21,16 @@ DATA_DIR.mkdir(exist_ok=True)
 CACHE_DIR.mkdir(exist_ok=True)
 
 IMAGE_CACHE_FILE = CACHE_DIR / "game_images.json"
+MANUALS_CACHE_FILE = CACHE_DIR / "game_manuals.json"
+
+def load_manuals_cache():
+    if MANUALS_CACHE_FILE.exists():
+        try:
+            with open(MANUALS_CACHE_FILE, "r", encoding="utf-8") as f:
+                return json.load(f)
+        except Exception:
+            pass
+    return {}
 
 def find_collection_csv():
     """Find the collection CSV file regardless of casing."""
@@ -98,11 +108,13 @@ def generate_apps_script(games, plays):
         weight = g.get('weight', 0.0)
         rating = g.get('rating', 0.0)
         bgg_url = f"https://boardgamegeek.com/boardgame/{g['id']}"
+        manual_url = g.get('manual_url') or f"https://boardgamegeek.com/boardgame/{g['id']}/files"
+        manual_formula = f'=IFERROR(HYPERLINK(\\"{manual_url}\\", \\"Official Rules\\"), \\"{manual_url}\\")'
         
         f_plays = f"=COUNTIF('Plays Log'!B:B, A{idx})"
         f_last = f'=IFERROR(TEXT(MAXIFS(\'Plays Log\'!A:A, \'Plays Log\'!B:B, A{idx}), \\"yyyy-mm-dd\\"), \\"Never\\")'
         
-        lib_rows.append(f'    ["{title}", "{itype}", "{owners}", {copies}, {min_p}, {max_p}, "{best_p}", {time_m}, {weight}, {rating}, "{f_plays}", "{f_last}", "{bgg_url}"]')
+        lib_rows.append(f'    ["{title}", "{itype}", "{owners}", {copies}, {min_p}, {max_p}, "{best_p}", {time_m}, {weight}, {rating}, "{f_plays}", "{f_last}", "{manual_formula}", "{bgg_url}"]')
 
     lib_rows_str = ',\n'.join(lib_rows)
 
@@ -181,7 +193,7 @@ function setupGameNightSpreadsheet() {{
   const libHeaders = [
     "Game Title", "Type", "Owner(s)", "Copies", "Min Players", "Max Players",
     "Best Count", "Play Time (min)", "Weight (1-5)", "BGG Rating",
-    "Total Plays", "Last Played Date", "BGG URL"
+    "Total Plays", "Last Played Date", "Official Manual", "BGG URL"
   ];
   libSheet.getRange(1, 1, 1, libHeaders.length).setValues([libHeaders]);
   libSheet.getRange(1, 1, 1, libHeaders.length)
@@ -262,7 +274,7 @@ function setupGameNightSpreadsheet() {{
 /**
  * Helper function to add a new game to the Library with proper dynamic formulas.
  */
-function addGameToLibrary(title, type, owners, copies, minP, maxP, bestP, timeM, weight, rating, bggUrl) {{
+function addGameToLibrary(title, type, owners, copies, minP, maxP, bestP, timeM, weight, rating, manualUrl, bggUrl) {{
   const ss = SpreadsheetApp.getActiveSpreadsheet();
   const libSheet = ss.getSheetByName("Library");
   if (!libSheet) return;
@@ -270,6 +282,7 @@ function addGameToLibrary(title, type, owners, copies, minP, maxP, bestP, timeM,
   const nextRow = libSheet.getLastRow() + 1;
   const fPlays = "=COUNTIF('Plays Log'!B:B, A" + nextRow + ")";
   const fLast = "=IFERROR(TEXT(MAXIFS('Plays Log'!A:A, 'Plays Log'!B:B, A" + nextRow + "), \\\"yyyy-mm-dd\\\"), \\\"Never\\\")";
+  const fManual = manualUrl ? ('=IFERROR(HYPERLINK("' + manualUrl + '", "Official Rules"), "' + manualUrl + '")') : "";
 
   libSheet.appendRow([
     title,
@@ -284,6 +297,7 @@ function addGameToLibrary(title, type, owners, copies, minP, maxP, bestP, timeM,
     rating || 0,
     fPlays,
     fLast,
+    fManual,
     bggUrl || ""
   ]);
 }}
@@ -309,6 +323,7 @@ function doPost(e) {{
         data.playtime,
         data.weight,
         data.rating,
+        data.manual_url || (data.id ? ("https://boardgamegeek.com/boardgame/" + data.id + "/files") : ""),
         data.id ? ("https://boardgamegeek.com/boardgame/" + data.id) : ""
       );
       return ContentService.createTextOutput(JSON.stringify({{ status: "success", message: "Game added to Library!" }}))
@@ -598,6 +613,14 @@ def main():
 
     save_image_cache(image_cache)
 
+    # Enrich with manuals / rulebooks
+    manuals_cache = load_manuals_cache()
+    for g in games:
+        gid = str(g["id"])
+        m_entry = manuals_cache.get(gid, {})
+        g["manual_url"] = m_entry.get("url") or f"https://boardgamegeek.com/boardgame/{gid}/files"
+        g["manual_file"] = m_entry.get("file")
+
     # Sort alphabetically by title
     games_sorted = sorted(games, key=lambda x: x["title"].lower())
 
@@ -612,7 +635,7 @@ def main():
         writer.writerow([
             "Title", "Type", "Owners", "Min Players", "Max Players",
             "Best Player Count", "Play Time (min)", "Weight (1.0-5.0)",
-            "Weight Class", "BGG Rating", "BGG Rank", "BGG URL"
+            "Weight Class", "BGG Rating", "BGG Rank", "Official Manual", "BGG URL"
         ])
         for g in games_sorted:
             w = g["weight"]
@@ -634,6 +657,7 @@ def main():
                 weight_class,
                 g["rating"],
                 g["rank"] or "",
+                g.get("manual_url") or f"https://boardgamegeek.com/boardgame/{g['id']}/files",
                 f"https://boardgamegeek.com/boardgame/{g['id']}"
             ])
     print(f"Saved Google Sheets CSV to: {DATA_DIR / 'games.csv'}")
