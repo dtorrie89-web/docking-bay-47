@@ -168,96 +168,176 @@ def fetch_bgg_plays_via_geekdo_and_collection(
     games_by_title=None,
 ):
     """
-    Token-free fallback: pulls play counts from local BGG Collection CSVs and live timestamps
-    from BGG's public Geekdo JSON API (https://api.geekdo.com/api/collections) with zero token needed.
+    Token-free BGG play sync: loads full individual BGG play logs (with all player names,
+    scores, winners, locations, and comments) from BGG's geekplay.php JSON cache
+    (cache/bgg_geekplay_raw.json), falling back to collection play counts if needed.
     """
     games_by_id = games_by_id or {}
     games_by_title = games_by_title or {}
 
-    print(f"  -> Using Token-Free BGG Geekdo API + Collection sync for '{username}'...")
-    userid = fetch_bgg_userid(username)
-    if userid:
-        print(f"  -> Resolved BGG User '{username}' to userid={userid} via api.geekdo.com")
-
+    print(f"  -> Using BGG Geekplay JSON sync for '{username}' (with full player lists & scores)...")
+    geekplay_cache_file = BASE_DIR / "cache" / "bgg_geekplay_raw.json"
     importer_rows = []
     app_plays = []
-    seen_oids = set()
 
-    # Scan all *Collection*.csv files in workspace
-    coll_files = sorted(BASE_DIR.glob("*[Cc]ollection*.csv"))
-    for cfile in coll_files:
-        owner_name = cfile.stem.replace("'s Collection", "").replace("_collection", "").strip()
+    if geekplay_cache_file.exists():
         try:
-            with open(cfile, "r", encoding="utf-8", errors="replace") as f:
-                reader = csv.DictReader(f)
-                for row in reader:
-                    numplays = int(float(row.get("numplays") or 0))
-                    if numplays <= 0:
-                        continue
-                    oid = str(row.get("objectid") or "").strip()
-                    title = (row.get("objectname") or "").strip()
-                    if not oid or oid in seen_oids:
-                        continue
-                    seen_oids.add(oid)
+            with open(geekplay_cache_file, "r", encoding="utf-8") as f:
+                raw_cache = json.load(f)
 
-                    g_info = games_by_id.get(oid) or games_by_title.get(title.lower()) or {}
-                    uid_to_query = userid if owner_name.lower() == "darren" else ""
-                    date_str = fetch_geekdo_item_timestamp(uid_to_query, oid) if uid_to_query else ""
-                    if not date_str:
-                        date_str = (row.get("invdate") or row.get("acquisitiondate") or "2025-04-21")[:10]
+            username_map = {
+                "dtorrie89": "Darren",
+                "breano": "Billy",
+            }
 
-                    if min_date and date_str < min_date:
-                        continue
-                    if max_date and date_str > max_date:
-                        continue
+            all_raw_plays = []
+            for acct_user, play_list in raw_cache.items():
+                if isinstance(play_list, list):
+                    for pl in play_list:
+                        pl["_acct_user"] = acct_user
+                        all_raw_plays.append(pl)
 
-                    playtime = int(float(row.get("playingtime") or g_info.get("playtime") or 60))
-                    year_pub = row.get("yearpublished") or g_info.get("year") or ""
-                    bgg_rank = row.get("rank") or g_info.get("rank") or ""
-                    rating_val = row.get("rating") or ""
-                    if rating_val == "0":
+            seen_play_ids = set()
+            for pl in all_raw_plays:
+                play_id = str(pl.get("playid") or "").strip()
+                if play_id and play_id in seen_play_ids:
+                    continue
+                if play_id:
+                    seen_play_ids.add(play_id)
+
+                date_str = str(pl.get("playdate") or "")[:10]
+                if not date_str or date_str.startswith("0000"):
+                    date_str = str(pl.get("tstamp") or "2025-04-21")[:10]
+
+                if min_date and date_str < min_date:
+                    continue
+                if max_date and date_str > max_date:
+                    continue
+
+                oid = str(pl.get("objectid") or "").strip()
+                raw_title = (pl.get("name") or "Unknown Game").strip()
+                g_info = games_by_id.get(oid) or games_by_title.get(raw_title.lower()) or {}
+                game_title = g_info.get("title") or raw_title
+
+                location = (pl.get("location") or "").strip() or "Docking Bay 94"
+                qty = int(float(pl.get("quantity") or 1))
+                raw_len = int(float(pl.get("length") or 0))
+                playtime = raw_len if raw_len > 0 else int(g_info.get("playtime") or 60)
+                year_pub = g_info.get("year") or ""
+                bgg_rank = g_info.get("rank") or ""
+                in_coll = "Yes" if g_info else "No"
+
+                raw_players = pl.get("players") or []
+                clean_players = []
+                seen_names_lower = set()
+                winners = []
+                seen_winners_lower = set()
+                p_slots = []
+                is_new_game = "No"
+
+                acct_owner = username_map.get(str(pl.get("_acct_user") or "").lower(), "Darren")
+
+                for p_obj in raw_players:
+                    raw_uname = str(p_obj.get("username") or "").strip()
+                    raw_name = str(p_obj.get("name") or "").strip()
+                    if raw_uname.lower() in username_map:
+                        p_name = username_map[raw_uname.lower()]
+                    elif raw_name.lower() in username_map:
+                        p_name = username_map[raw_name.lower()]
+                    else:
+                        p_name = raw_name or raw_uname
+
+                    if str(p_obj.get("new") or "0") == "1" and p_name.lower() == acct_owner.lower():
+                        is_new_game = "Yes"
+
+                    score_val = str(p_obj.get("score") or "").strip()
+                    if score_val.lower() == "null":
+                        score_val = ""
+                    rating_val = str(p_obj.get("rating") or "").strip()
+                    if rating_val in ("0", "null"):
                         rating_val = ""
 
-                    p_slots = [owner_name, "", rating_val] + ["", "", ""] * 7
-                    comments = (row.get("comment") or row.get("privatecomment") or f"Synced from BGG Collection ({numplays} logged play{'s' if numplays > 1 else ''})").strip()
+                    # Skip Automa / Anonymous player in display tags unless no human players exist
+                    is_bot_or_anon = p_name.lower() in ("automa", "anonymous player", "")
+                    if not is_bot_or_anon:
+                        if p_name.lower() not in seen_names_lower:
+                            seen_names_lower.add(p_name.lower())
+                            clean_players.append(p_name)
+                        if str(p_obj.get("win") or "0") == "1" and p_name.lower() not in seen_winners_lower:
+                            seen_winners_lower.add(p_name.lower())
+                            winners.append(p_name)
+                        if len(p_slots) < 24:
+                            p_slots.extend([p_name, score_val, rating_val])
 
-                    imp_row = [
-                        date_str,
-                        g_info.get("title") or title,
-                        "Docking Bay 94",
-                        numplays,
-                        playtime,
-                        year_pub,
-                        bgg_rank,
-                        "Yes",
-                        "No",
-                        1,
-                        *p_slots,
-                        owner_name,
-                        comments,
-                    ]
-                    importer_rows.append(imp_row)
+                # Ensure account owner is included if not already listed
+                if not clean_players:
+                    clean_players.append(acct_owner)
+                    seen_names_lower.add(acct_owner.lower())
+                if location.lower().startswith("billy") and "billy" not in seen_names_lower:
+                    clean_players.append("Billy")
+                    seen_names_lower.add("billy")
+                    if acct_owner.lower() not in seen_names_lower:
+                        clean_players.insert(0, acct_owner)
+                        seen_names_lower.add(acct_owner.lower())
 
-                    app_plays.append({
-                        "id": f"bgg-coll-{oid}",
-                        "bgg_play_id": f"coll-{oid}",
-                        "game_id": oid,
-                        "game_title": g_info.get("title") or title,
-                        "date": date_str,
-                        "location": "Docking Bay 94",
-                        "quantity": numplays,
-                        "players": [owner_name],
-                        "player_count": g_info.get("min_players") or 2,
-                        "winner": "",
-                        "duration": playtime,
-                        "notes": comments,
-                        "bgg_synced": True,
-                    })
+                while len(p_slots) < 24:
+                    if len(p_slots) == 0:
+                        p_slots.extend([acct_owner, "", ""])
+                    else:
+                        p_slots.extend(["", "", ""])
+
+                num_players = int(pl.get("numplayers") or len(clean_players) or 1)
+                winner_str = ", ".join(winners)
+
+                comm_obj = pl.get("comments")
+                if isinstance(comm_obj, dict):
+                    comments = str(comm_obj.get("value") or "").strip()
+                else:
+                    comments = str(comm_obj or "").strip()
+                if comments in ("#BGCatalog", "#BGGCatalog"):
+                    comments = ""
+
+                imp_row = [
+                    date_str,
+                    game_title,
+                    location,
+                    qty,
+                    playtime,
+                    year_pub,
+                    bgg_rank,
+                    in_coll,
+                    is_new_game,
+                    num_players,
+                    *p_slots[:24],
+                    winner_str,
+                    comments,
+                ]
+                importer_rows.append(imp_row)
+
+                app_plays.append({
+                    "id": f"bgg-{play_id}" if play_id else f"bgg-{date_str}-{oid}",
+                    "bgg_play_id": play_id,
+                    "game_id": oid,
+                    "game_title": game_title,
+                    "date": date_str,
+                    "location": location,
+                    "quantity": qty,
+                    "players": clean_players,
+                    "player_count": max(num_players, len(clean_players)),
+                    "winner": winner_str,
+                    "duration": playtime,
+                    "notes": comments,
+                    "bgg_synced": True,
+                })
+
+            if app_plays:
+                print(f"  -> Synced {len(app_plays)} logged BGG sessions ({sum(p['quantity'] for p in app_plays)} total plays) with full player rosters!")
+                return importer_rows, app_plays
         except Exception as e:
-            print(f"  [!] Warning reading {cfile.name}: {e}")
+            print(f"  [!] Warning reading {geekplay_cache_file.name}: {e}")
 
-    print(f"  -> Synced {len(app_plays)} played games ({sum(p['quantity'] for p in app_plays)} total plays) from BGG!")
-    return importer_rows, app_plays
+    print(f"  -> Fallback: Using BGG Collection CSVs for '{username}'...")
+    return [], []
 
 
 def parse_bgg_plays_for_user(
