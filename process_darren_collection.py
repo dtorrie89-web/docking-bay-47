@@ -85,7 +85,7 @@ def load_image_cache():
             with open(HIGHRES_CACHE_FILE, "r", encoding="utf-8") as f:
                 h_cache = json.load(f)
                 for k, v in h_cache.items():
-                    if k not in cache or not cache[k]:
+                    if v:
                         cache[k] = v
         except Exception:
             pass
@@ -94,11 +94,13 @@ def load_image_cache():
 def save_image_cache(cache):
     with open(IMAGE_CACHE_FILE, "w", encoding="utf-8") as f:
         json.dump(cache, f, indent=2)
+    with open(HIGHRES_CACHE_FILE, "w", encoding="utf-8") as f:
+        json.dump(cache, f, indent=2)
 
 def fetch_image(game_id, cache):
     if not game_id:
         return ""
-    if game_id in cache and cache[game_id]:
+    if game_id in cache and cache[game_id] and "__small" not in cache[game_id]:
         return cache[game_id]
         
     url = f"https://boardgamegeek.com/api/geekitems?objectid={game_id}&objecttype=thing"
@@ -650,11 +652,15 @@ def main():
     games = list(merged_games.values())
     print(f"Processed {len(games)} unique owned games ({sum(1 for x in games if x['itemtype'] != 'expansion')} base, {sum(1 for x in games if x['itemtype'] == 'expansion')} expansions).")
 
-    # Fetch/verify cover art
-    print("Checking cover artwork...")
+    # Fetch/verify official high-res cover art
+    print("Checking official cover artwork...")
     for idx, g in enumerate(games):
         gid = g["id"]
-        if not g.get("thumbnail"):
+        cached_img = image_cache.get(gid, "")
+        if cached_img and "__small" not in cached_img:
+            g["thumbnail"] = cached_img
+            g["image"] = cached_img
+        elif not g.get("thumbnail") or "__small" in g.get("thumbnail", ""):
             thumb = fetch_image(gid, image_cache)
             g["thumbnail"] = thumb
             g["image"] = thumb
@@ -663,13 +669,10 @@ def main():
 
     save_image_cache(image_cache)
 
-    # Enrich with manuals / rulebooks
-    manuals_cache = load_manuals_cache()
-    for g in games:
-        gid = str(g["id"])
-        m_entry = manuals_cache.get(gid, {})
-        g["manual_url"] = m_entry.get("url") or f"https://boardgamegeek.com/boardgame/{gid}/files"
-        g["manual_file"] = m_entry.get("file")
+    # Enrich & download official manuals / rulebook PDFs to Google Drive
+    print("Checking and populating official manuals in Google Drive...")
+    import download_manuals
+    download_manuals.ensure_manuals_for_games(games)
 
     # Sort alphabetically by title
     games_sorted = sorted(games, key=lambda x: x["title"].lower())
