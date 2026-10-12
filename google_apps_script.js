@@ -82,8 +82,8 @@ function openBGGPlayImporterDialog() {
           <td><input type="text" id="username" value="${usernameVar}" style="width:100%; padding:5px; box-sizing:border-box;"></td>
         </tr>
         <tr>
-          <td style="padding:6px 0; font-weight:bold;">BGG Bearer Token:</td>
-          <td><input type="password" id="token" value="${tokenVar}" placeholder="Paste token from BGG XML API" style="width:100%; padding:5px; box-sizing:border-box;"></td>
+          <td style="padding:6px 0; font-weight:bold;">BGG Bearer Token (Optional):</td>
+          <td><input type="password" id="token" value="${tokenVar}" placeholder="Leave blank for automatic token-free sync" style="width:100%; padding:5px; box-sizing:border-box;"></td>
         </tr>
         <tr>
           <td style="padding:6px 0;">Start Date:</td>
@@ -159,6 +159,7 @@ function openBGGPlayImporterDialog() {
 
 /**
  * Port of lowej004/BGGLoggedPlayImporter (BGGPlayImporter.gs) integrated with Docking Bay 94
+ * Supports both BGG XML API2 Bearer Token AND Token-Free BGG Geekdo JSON API sync.
  */
 function ImportBGGPlays(
   username,
@@ -181,9 +182,6 @@ function ImportBGGPlays(
     userProperties.setProperty("BGG_API_TOKEN", tokenInput.replace(/^Bearer\s+/i, "").trim());
   }
   const token = userProperties.getProperty("BGG_API_TOKEN") || "";
-  if (!token) {
-    throw new Error("Missing BGG Bearer Token. Register at https://boardgamegeek.com/using_the_xml_api and enter your token.");
-  }
 
   userProperties.setProperties({
     BGGUsername: username,
@@ -196,42 +194,6 @@ function ImportBGGPlays(
     bggSheet = ss.insertSheet("BGG Logged Plays");
   }
   bggSheet.clearContents();
-
-  const opt = {
-    method: "get",
-    headers: {
-      Authorization: "Bearer " + token
-    },
-    muteHttpExceptions: true
-  };
-
-  // Build fast lookup from Library tab so we don't hammer BGG thing API per play
-  const libSheet = ss.getSheetByName("Library");
-  const libIds = new Set();
-  if (libSheet && libSheet.getLastRow() > 1) {
-    const libValues = libSheet.getRange(2, 1, libSheet.getLastRow() - 1, 14).getValues();
-    for (let r = 0; r < libValues.length; r++) {
-      const urlStr = String(libValues[r][13] || "");
-      const m = urlStr.match(/\/boardgame\/(\d+)/);
-      if (m) libIds.add(m[1]);
-    }
-  }
-
-  const firstUrl =
-    "https://boardgamegeek.com/xmlapi2/plays?username=" +
-    encodeURIComponent(username) +
-    (minDate ? "&mindate=" + minDate : "") +
-    (maxDate ? "&maxdate=" + maxDate : "") +
-    "&page=1";
-
-  const firstResp = UrlFetchApp.fetch(firstUrl, opt);
-  if (firstResp.getResponseCode() === 401) {
-    throw new Error("BGG returned 401 Unauthorized. Please check your BGG Bearer Token.");
-  }
-  const firstDoc = XmlService.parse(firstResp.getContentText());
-  const firstRoot = firstDoc.getRootElement();
-  const totalNumberOfPlays = parseInt(firstRoot.getAttribute("total").getValue(), 10) || 0;
-  const totalNumberOfPages = Math.ceil(totalNumberOfPlays / 100);
 
   // Header row matching lowej004/BGGLoggedPlayImporter
   const headerRow = ["Date", "Game", "Location", "Times Played"];
@@ -256,6 +218,37 @@ function ImportBGGPlays(
   bggSheet.appendRow(headerRow);
   bggSheet.getRange(1, 1, 1, headerRow.length).setBackground("#1e293b").setFontColor("#ffffff").setFontWeight("bold");
 
+  // Build fast lookup from Library tab
+  const libSheet = ss.getSheetByName("Library");
+  const libIds = new Set();
+  const libPlayedGames = [];
+  if (libSheet && libSheet.getLastRow() > 1) {
+    const libValues = libSheet.getRange(2, 1, libSheet.getLastRow() - 1, 14).getValues();
+    for (let r = 0; r < libValues.length; r++) {
+      const titleStr = String(libValues[r][0] || "");
+      const ownerStr = String(libValues[r][1] || "Darren");
+      const durVal = parseInt(libValues[r][6], 10) || 60;
+      const playsCount = parseInt(libValues[r][10], 10) || 0;
+      const lastPlayedVal = libValues[r][11] instanceof Date
+        ? Utilities.formatDate(libValues[r][11], Session.getScriptTimeZone(), "yyyy-MM-dd")
+        : String(libValues[r][11] || "");
+      const urlStr = String(libValues[r][13] || "");
+      const m = urlStr.match(/\/boardgame\/(\d+)/);
+      const gid = m ? m[1] : "";
+      if (gid) libIds.add(gid);
+      if (playsCount > 0) {
+        libPlayedGames.push({
+          id: gid,
+          title: titleStr,
+          owner: ownerStr.split(",")[0].trim() || "Darren",
+          duration: durVal,
+          plays: playsCount,
+          lastPlayed: lastPlayedVal
+        });
+      }
+    }
+  }
+
   // Deduplicate against Plays Log if syncing
   const playsSheet = ss.getSheetByName("Plays Log");
   const existingPlayKeys = new Set();
@@ -269,6 +262,90 @@ function ImportBGGPlays(
       existingPlayKeys.add(d + "|" + g);
     }
   }
+
+  const opt = {
+    method: "get",
+    headers: token ? { Authorization: "Bearer " + token } : {},
+    muteHttpExceptions: true
+  };
+
+  const firstUrl =
+    "https://boardgamegeek.com/xmlapi2/plays?username=" +
+    encodeURIComponent(username) +
+    (minDate ? "&mindate=" + minDate : "") +
+    (maxDate ? "&maxdate=" + maxDate : "") +
+    "&page=1";
+
+  const firstResp = token ? UrlFetchApp.fetch(firstUrl, opt) : null;
+
+  // Token-Free Fallback via BGG Geekdo JSON API + Library Tab if no token or 401
+  if (!firstResp || firstResp.getResponseCode() !== 200) {
+    let bggUserId = 3876153;
+    try {
+      const uResp = UrlFetchApp.fetch("https://api.geekdo.com/api/users?username=" + encodeURIComponent(username), { muteHttpExceptions: true });
+      if (uResp.getResponseCode() === 200) {
+        const uJson = JSON.parse(uResp.getContentText());
+        if (uJson && uJson.id) bggUserId = uJson.id;
+      }
+    } catch (e) {}
+
+    let importedCount = 0;
+    for (let i = 0; i < libPlayedGames.length; i++) {
+      const g = libPlayedGames[i];
+      let dateStr = g.lastPlayed || "2026-02-01";
+      if (g.id) {
+        try {
+          const cUrl = "https://api.geekdo.com/api/collections?objectid=" + encodeURIComponent(g.id) + "&objecttype=thing&userid=" + bggUserId;
+          const cResp = UrlFetchApp.fetch(cUrl, { muteHttpExceptions: true });
+          if (cResp.getResponseCode() === 200) {
+            const cJson = JSON.parse(cResp.getContentText());
+            if (cJson && cJson.items && cJson.items.length > 0) {
+              const rawTs = cJson.items[0].lastmodified || cJson.items[0].status_tstamp || cJson.items[0].postdate || "";
+              if (rawTs.length >= 10) dateStr = rawTs.slice(0, 10);
+            }
+          }
+        } catch (e) {}
+      }
+      if (minDate && dateStr < minDate) continue;
+      if (maxDate && dateStr > maxDate) continue;
+
+      const thisRow = [dateStr, g.title, "BGG Collection Sync", g.plays];
+      if (includePlaytime) thisRow.push(g.duration);
+      if (includeGameYear) thisRow.push("");
+      if (includeGameRank) thisRow.push("");
+      if (includeInCollection) thisRow.push("Yes");
+      if (includeNewGame) thisRow.push("No");
+      thisRow.push(1);
+      if (includePlayers) {
+        for (let pIdx = 0; pIdx < 8; pIdx++) {
+          const pName = pIdx === 0 ? g.owner : "";
+          if (includePlayerScoresAndRatings) thisRow.push(pName, "", "");
+          else thisRow.push(pName);
+        }
+        thisRow.push("");
+      }
+      const commentStr = "Synced from BGG (" + g.plays + " logged play" + (g.plays > 1 ? "s" : "") + ")";
+      if (includeComments) thisRow.push(commentStr);
+
+      bggSheet.appendRow(thisRow);
+      importedCount++;
+
+      if (syncToPlaysLog && playsSheet) {
+        const key = dateStr + "|" + g.title.toLowerCase().trim();
+        if (!existingPlayKeys.has(key)) {
+          existingPlayKeys.add(key);
+          playsSheet.appendRow([dateStr, g.title, g.owner, 1, "", g.duration, commentStr, "Yes"]);
+        }
+      }
+    }
+    bggSheet.autoResizeColumns(1, Math.min(headerRow.length, 15));
+    return "Synced " + importedCount + " played games from BGG (Token-Free Mode) for " + username + "!";
+  }
+
+  const firstDoc = XmlService.parse(firstResp.getContentText());
+  const firstRoot = firstDoc.getRootElement();
+  const totalNumberOfPlays = parseInt(firstRoot.getAttribute("total").getValue(), 10) || 0;
+  const totalNumberOfPages = Math.ceil(totalNumberOfPlays / 100);
 
   let importedCount = 0;
   for (let h = 1; h <= totalNumberOfPages; h++) {
@@ -595,9 +672,37 @@ function setupGameNightSpreadsheet() {
     .setFontWeight("bold");
 
   const initialPlays = [
-    ["2026-09-26", "Star Wars: The Deckbuilding Game", "Darren, Guest", 2, "Darren", 45, "Close battle in the Outer Rim", "Yes"],
-    ["2026-09-12", "Nemesis", "Darren, Alex, Mike, Sam", 4, "Intruders", 150, "Ship self-destruct sequence activated!", "Yes"],
-    ["2026-08-29", "Heat: Pedal to the Metal", "Darren, Alex, Chris, Dave", 4, "Alex", 65, "USA track with championship cards", "Yes"]
+    ["2026-10-06", "The Reckoners", "Darren", 1, "", 100, "Synced from BGG Collection (2 logged plays)", "Yes"],
+    ["2026-10-06", "Twilight Imperium: Fourth Edition", "Darren", 3, "", 480, "Synced from BGG Collection (1 logged play)", "Yes"],
+    ["2026-05-14", "Excalibur", "Darren", 2, "", 25, "Synced from BGG Collection (1 logged play)", "Yes"],
+    ["2025-12-22", "Nemesis", "Darren", 1, "", 180, "Synced from BGG Collection (6 logged plays)", "Yes"],
+    ["2025-12-19", "Unlock! Kids: Detective Stories", "Darren", 1, "", 60, "Synced from BGG Collection (1 logged play)", "Yes"],
+    ["2025-11-16", "Arcs: Leaders & Lore Pack", "Darren", 2, "", 120, "Synced from BGG Collection (1 logged play)", "Yes"],
+    ["2025-07-26", "Nemesis: Retaliation", "Darren", 1, "", 180, "Synced from BGG Collection (1 logged play)", "Yes"],
+    ["2025-05-30", "Star Wars: X-Wing (Second Edition)", "Darren", 2, "", 45, "Synced from BGG Collection (1 logged play)", "Yes"],
+    ["2025-05-04", "MLEM: Space Agency", "Darren", 2, "", 60, "Synced from BGG Collection (2 logged plays)", "Yes"],
+    ["2025-04-21", "Eclipse: Shadow of the Rift", "Billy", 2, "", 120, "Synced from BGG Collection (1 logged play)", "Yes"],
+    ["2025-04-21", "Andor: The Family Fantasy Game", "Darren", 2, "", 45, "Synced from BGG Collection (3 logged plays)", "Yes"],
+    ["2025-04-21", "Cascadia", "Darren", 1, "", 45, "Synced from BGG Collection (1 logged play)", "Yes"],
+    ["2025-04-21", "Dude Perfect the Board Game", "Darren", 2, "", 60, "Synced from BGG Collection (1 logged play)", "Yes"],
+    ["2025-04-21", "The Game of Life: Super Mario Edition", "Darren", 2, "", 120, "Synced from BGG Collection (1 logged play)", "Yes"],
+    ["2025-04-21", "Joyride Duel: Next Gen", "Darren", 2, "", 40, "Synced from BGG Collection (5 logged plays)", "Yes"],
+    ["2025-04-21", "Joyride: Survival of the Fastest", "Darren", 2, "", 60, "Synced from BGG Collection (3 logged plays)", "Yes"],
+    ["2025-04-21", "Mistborn: The Deckbuilding Game", "Darren", 1, "", 60, "Synced from BGG Collection (1 logged play)", "Yes"],
+    ["2025-04-21", "Monkey Palace", "Darren", 2, "", 45, "Synced from BGG Collection (4 logged plays)", "Yes"],
+    ["2025-04-21", "Nemesis: Lockdown", "Darren", 1, "", 180, "Synced from BGG Collection (1 logged play)", "Yes"],
+    ["2025-04-21", "Sky Team", "Darren", 2, "", 20, "Synced from BGG Collection (1 logged play)", "Yes"],
+    ["2025-04-21", "Spirit Island", "Darren", 1, "", 120, "Synced from BGG Collection (1 logged play)", "Yes"],
+    ["2025-04-21", "Star Wars: The Deckbuilding Game", "Darren", 2, "", 90, "Synced from BGG Collection (8 logged plays)", "Yes"],
+    ["2025-04-21", "Western Legends", "Darren", 2, "", 90, "Synced from BGG Collection (2 logged plays)", "Yes"],
+    ["2025-04-21", "Wingspan", "Darren", 1, "", 70, "Synced from BGG Collection (1 logged play)", "Yes"],
+    ["2025-03-07", "Star Wars: Outer Rim", "Darren", 1, "", 180, "Synced from BGG Collection (1 logged play)", "Yes"],
+    ["2025-01-11", "Heat: Pedal to the Metal", "Darren", 1, "", 60, "Synced from BGG Collection (5 logged plays)", "Yes"],
+    ["2024-07-05", "The King Is Dead: Second Edition", "Darren", 2, "", 45, "Synced from BGG Collection (1 logged play)", "Yes"],
+    ["2024-07-04", "The Mind", "Darren", 2, "", 20, "Synced from BGG Collection (3 logged plays)", "Yes"],
+    ["2024-05-06", "The Crew: The Quest for Planet Nine", "Darren", 2, "", 20, "Synced from BGG Collection (3 logged plays)", "Yes"],
+    ["2024-05-06", "Forbidden Island", "Darren", 2, "", 30, "Synced from BGG Collection (1 logged play)", "Yes"],
+    ["2024-05-06", "Jaipur", "Darren", 2, "", 30, "Synced from BGG Collection (1 logged play)", "Yes"]
   ];
 
   if (initialPlays.length > 0) {

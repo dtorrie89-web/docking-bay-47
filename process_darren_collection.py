@@ -262,8 +262,8 @@ function openBGGPlayImporterDialog() {{
           <td><input type="text" id="username" value="${{usernameVar}}" style="width:100%; padding:5px; box-sizing:border-box;"></td>
         </tr>
         <tr>
-          <td style="padding:6px 0; font-weight:bold;">BGG Bearer Token:</td>
-          <td><input type="password" id="token" value="${{tokenVar}}" placeholder="Paste token from BGG XML API" style="width:100%; padding:5px; box-sizing:border-box;"></td>
+          <td style="padding:6px 0; font-weight:bold;">BGG Bearer Token (Optional):</td>
+          <td><input type="password" id="token" value="${{tokenVar}}" placeholder="Leave blank for automatic token-free sync" style="width:100%; padding:5px; box-sizing:border-box;"></td>
         </tr>
         <tr>
           <td style="padding:6px 0;">Start Date:</td>
@@ -339,6 +339,7 @@ function openBGGPlayImporterDialog() {{
 
 /**
  * Port of lowej004/BGGLoggedPlayImporter (BGGPlayImporter.gs) integrated with Docking Bay 94
+ * Supports both BGG XML API2 Bearer Token AND Token-Free BGG Geekdo JSON API sync.
  */
 function ImportBGGPlays(
   username,
@@ -361,9 +362,6 @@ function ImportBGGPlays(
     userProperties.setProperty("BGG_API_TOKEN", tokenInput.replace(/^Bearer\\s+/i, "").trim());
   }}
   const token = userProperties.getProperty("BGG_API_TOKEN") || "";
-  if (!token) {{
-    throw new Error("Missing BGG Bearer Token. Register at https://boardgamegeek.com/using_the_xml_api and enter your token.");
-  }}
 
   userProperties.setProperties({{
     BGGUsername: username,
@@ -376,42 +374,6 @@ function ImportBGGPlays(
     bggSheet = ss.insertSheet("BGG Logged Plays");
   }}
   bggSheet.clearContents();
-
-  const opt = {{
-    method: "get",
-    headers: {{
-      Authorization: "Bearer " + token
-    }},
-    muteHttpExceptions: true
-  }};
-
-  // Build fast lookup from Library tab so we don't hammer BGG thing API per play
-  const libSheet = ss.getSheetByName("Library");
-  const libIds = new Set();
-  if (libSheet && libSheet.getLastRow() > 1) {{
-    const libValues = libSheet.getRange(2, 1, libSheet.getLastRow() - 1, 14).getValues();
-    for (let r = 0; r < libValues.length; r++) {{
-      const urlStr = String(libValues[r][13] || "");
-      const m = urlStr.match(/\\/boardgame\\/(\\d+)/);
-      if (m) libIds.add(m[1]);
-    }}
-  }}
-
-  const firstUrl =
-    "https://boardgamegeek.com/xmlapi2/plays?username=" +
-    encodeURIComponent(username) +
-    (minDate ? "&mindate=" + minDate : "") +
-    (maxDate ? "&maxdate=" + maxDate : "") +
-    "&page=1";
-
-  const firstResp = UrlFetchApp.fetch(firstUrl, opt);
-  if (firstResp.getResponseCode() === 401) {{
-    throw new Error("BGG returned 401 Unauthorized. Please check your BGG Bearer Token.");
-  }}
-  const firstDoc = XmlService.parse(firstResp.getContentText());
-  const firstRoot = firstDoc.getRootElement();
-  const totalNumberOfPlays = parseInt(firstRoot.getAttribute("total").getValue(), 10) || 0;
-  const totalNumberOfPages = Math.ceil(totalNumberOfPlays / 100);
 
   // Header row matching lowej004/BGGLoggedPlayImporter
   const headerRow = ["Date", "Game", "Location", "Times Played"];
@@ -436,6 +398,37 @@ function ImportBGGPlays(
   bggSheet.appendRow(headerRow);
   bggSheet.getRange(1, 1, 1, headerRow.length).setBackground("#1e293b").setFontColor("#ffffff").setFontWeight("bold");
 
+  // Build fast lookup from Library tab
+  const libSheet = ss.getSheetByName("Library");
+  const libIds = new Set();
+  const libPlayedGames = [];
+  if (libSheet && libSheet.getLastRow() > 1) {{
+    const libValues = libSheet.getRange(2, 1, libSheet.getLastRow() - 1, 14).getValues();
+    for (let r = 0; r < libValues.length; r++) {{
+      const titleStr = String(libValues[r][0] || "");
+      const ownerStr = String(libValues[r][1] || "Darren");
+      const durVal = parseInt(libValues[r][6], 10) || 60;
+      const playsCount = parseInt(libValues[r][10], 10) || 0;
+      const lastPlayedVal = libValues[r][11] instanceof Date
+        ? Utilities.formatDate(libValues[r][11], Session.getScriptTimeZone(), "yyyy-MM-dd")
+        : String(libValues[r][11] || "");
+      const urlStr = String(libValues[r][13] || "");
+      const m = urlStr.match(/\\/boardgame\\/(\\d+)/);
+      const gid = m ? m[1] : "";
+      if (gid) libIds.add(gid);
+      if (playsCount > 0) {{
+        libPlayedGames.push({{
+          id: gid,
+          title: titleStr,
+          owner: ownerStr.split(",")[0].trim() || "Darren",
+          duration: durVal,
+          plays: playsCount,
+          lastPlayed: lastPlayedVal
+        }});
+      }}
+    }}
+  }}
+
   // Deduplicate against Plays Log if syncing
   const playsSheet = ss.getSheetByName("Plays Log");
   const existingPlayKeys = new Set();
@@ -449,6 +442,90 @@ function ImportBGGPlays(
       existingPlayKeys.add(d + "|" + g);
     }}
   }}
+
+  const opt = {{
+    method: "get",
+    headers: token ? {{ Authorization: "Bearer " + token }} : {{}},
+    muteHttpExceptions: true
+  }};
+
+  const firstUrl =
+    "https://boardgamegeek.com/xmlapi2/plays?username=" +
+    encodeURIComponent(username) +
+    (minDate ? "&mindate=" + minDate : "") +
+    (maxDate ? "&maxdate=" + maxDate : "") +
+    "&page=1";
+
+  const firstResp = token ? UrlFetchApp.fetch(firstUrl, opt) : null;
+
+  // Token-Free Fallback via BGG Geekdo JSON API + Library Tab if no token or 401
+  if (!firstResp || firstResp.getResponseCode() !== 200) {{
+    let bggUserId = 3876153;
+    try {{
+      const uResp = UrlFetchApp.fetch("https://api.geekdo.com/api/users?username=" + encodeURIComponent(username), {{ muteHttpExceptions: true }});
+      if (uResp.getResponseCode() === 200) {{
+        const uJson = JSON.parse(uResp.getContentText());
+        if (uJson && uJson.id) bggUserId = uJson.id;
+      }}
+    }} catch (e) {{}}
+
+    let importedCount = 0;
+    for (let i = 0; i < libPlayedGames.length; i++) {{
+      const g = libPlayedGames[i];
+      let dateStr = g.lastPlayed || "2026-02-01";
+      if (g.id) {{
+        try {{
+          const cUrl = "https://api.geekdo.com/api/collections?objectid=" + encodeURIComponent(g.id) + "&objecttype=thing&userid=" + bggUserId;
+          const cResp = UrlFetchApp.fetch(cUrl, {{ muteHttpExceptions: true }});
+          if (cResp.getResponseCode() === 200) {{
+            const cJson = JSON.parse(cResp.getContentText());
+            if (cJson && cJson.items && cJson.items.length > 0) {{
+              const rawTs = cJson.items[0].lastmodified || cJson.items[0].status_tstamp || cJson.items[0].postdate || "";
+              if (rawTs.length >= 10) dateStr = rawTs.slice(0, 10);
+            }}
+          }}
+        }} catch (e) {{}}
+      }}
+      if (minDate && dateStr < minDate) continue;
+      if (maxDate && dateStr > maxDate) continue;
+
+      const thisRow = [dateStr, g.title, "BGG Collection Sync", g.plays];
+      if (includePlaytime) thisRow.push(g.duration);
+      if (includeGameYear) thisRow.push("");
+      if (includeGameRank) thisRow.push("");
+      if (includeInCollection) thisRow.push("Yes");
+      if (includeNewGame) thisRow.push("No");
+      thisRow.push(1);
+      if (includePlayers) {{
+        for (let pIdx = 0; pIdx < 8; pIdx++) {{
+          const pName = pIdx === 0 ? g.owner : "";
+          if (includePlayerScoresAndRatings) thisRow.push(pName, "", "");
+          else thisRow.push(pName);
+        }}
+        thisRow.push("");
+      }}
+      const commentStr = "Synced from BGG (" + g.plays + " logged play" + (g.plays > 1 ? "s" : "") + ")";
+      if (includeComments) thisRow.push(commentStr);
+
+      bggSheet.appendRow(thisRow);
+      importedCount++;
+
+      if (syncToPlaysLog && playsSheet) {{
+        const key = dateStr + "|" + g.title.toLowerCase().trim();
+        if (!existingPlayKeys.has(key)) {{
+          existingPlayKeys.add(key);
+          playsSheet.appendRow([dateStr, g.title, g.owner, 1, "", g.duration, commentStr, "Yes"]);
+        }}
+      }}
+    }}
+    bggSheet.autoResizeColumns(1, Math.min(headerRow.length, 15));
+    return "Synced " + importedCount + " played games from BGG (Token-Free Mode) for " + username + "!";
+  }}
+
+  const firstDoc = XmlService.parse(firstResp.getContentText());
+  const firstRoot = firstDoc.getRootElement();
+  const totalNumberOfPlays = parseInt(firstRoot.getAttribute("total").getValue(), 10) || 0;
+  const totalNumberOfPages = Math.ceil(totalNumberOfPlays / 100);
 
   let importedCount = 0;
   for (let h = 1; h <= totalNumberOfPages; h++) {{
@@ -829,12 +906,13 @@ def main():
                     gid = str(p.get("game_id", ""))
                     gt = p.get("game_title", "").strip().lower()
                     p_date = p.get("date")
+                    p_qty = to_int(p.get("quantity"), 1) or 1
                     for k in (gid, gt):
                         if not k:
                             continue
                         if k not in plays_map:
                             plays_map[k] = {"count": 0, "last_played": None}
-                        plays_map[k]["count"] += 1
+                        plays_map[k]["count"] += p_qty
                         if p_date and (plays_map[k]["last_played"] is None or p_date > plays_map[k]["last_played"]):
                             plays_map[k]["last_played"] = p_date
         except Exception as e:

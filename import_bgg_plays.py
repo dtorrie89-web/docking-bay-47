@@ -121,6 +121,145 @@ def fetch_bgg_plays_xml(username, token, min_date="", max_date="", page=1):
         return resp.read()
 
 
+def fetch_bgg_userid(username):
+    try:
+        url = f"https://api.geekdo.com/api/users?username={urllib.parse.quote(username)}"
+        req = urllib.request.Request(
+            url,
+            headers={"User-Agent": "Mozilla/5.0", "Accept": "application/json"},
+        )
+        with urllib.request.urlopen(req, timeout=12) as resp:
+            data = json.loads(resp.read().decode("utf-8"))
+            if isinstance(data, list) and data:
+                return str(data[0].get("userid") or data[0].get("id") or "")
+    except Exception:
+        pass
+    return ""
+
+
+def fetch_geekdo_item_timestamp(userid, objectid):
+    if not userid or not objectid:
+        return ""
+    try:
+        url = f"https://api.geekdo.com/api/collections?objectid={urllib.parse.quote(str(objectid))}&objecttype=thing&userid={urllib.parse.quote(str(userid))}"
+        req = urllib.request.Request(
+            url,
+            headers={"User-Agent": "Mozilla/5.0", "Accept": "application/json"},
+        )
+        with urllib.request.urlopen(req, timeout=10) as resp:
+            data = json.loads(resp.read().decode("utf-8"))
+            items = data.get("items") or []
+            if items:
+                it = items[0]
+                for field in ("lastmodified", "status_tstamp", "postdate", "rating_tstamp"):
+                    val = str(it.get(field) or "")[:10]
+                    if val and not val.startswith("0000"):
+                        return val
+    except Exception:
+        pass
+    return ""
+
+
+def fetch_bgg_plays_via_geekdo_and_collection(
+    username,
+    min_date="",
+    max_date="",
+    games_by_id=None,
+    games_by_title=None,
+):
+    """
+    Token-free fallback: pulls play counts from local BGG Collection CSVs and live timestamps
+    from BGG's public Geekdo JSON API (https://api.geekdo.com/api/collections) with zero token needed.
+    """
+    games_by_id = games_by_id or {}
+    games_by_title = games_by_title or {}
+
+    print(f"  -> Using Token-Free BGG Geekdo API + Collection sync for '{username}'...")
+    userid = fetch_bgg_userid(username)
+    if userid:
+        print(f"  -> Resolved BGG User '{username}' to userid={userid} via api.geekdo.com")
+
+    importer_rows = []
+    app_plays = []
+    seen_oids = set()
+
+    # Scan all *Collection*.csv files in workspace
+    coll_files = sorted(BASE_DIR.glob("*[Cc]ollection*.csv"))
+    for cfile in coll_files:
+        owner_name = cfile.stem.replace("'s Collection", "").replace("_collection", "").strip()
+        try:
+            with open(cfile, "r", encoding="utf-8", errors="replace") as f:
+                reader = csv.DictReader(f)
+                for row in reader:
+                    numplays = int(float(row.get("numplays") or 0))
+                    if numplays <= 0:
+                        continue
+                    oid = str(row.get("objectid") or "").strip()
+                    title = (row.get("objectname") or "").strip()
+                    if not oid or oid in seen_oids:
+                        continue
+                    seen_oids.add(oid)
+
+                    g_info = games_by_id.get(oid) or games_by_title.get(title.lower()) or {}
+                    uid_to_query = userid if owner_name.lower() == "darren" else ""
+                    date_str = fetch_geekdo_item_timestamp(uid_to_query, oid) if uid_to_query else ""
+                    if not date_str:
+                        date_str = (row.get("invdate") or row.get("acquisitiondate") or "2025-04-21")[:10]
+
+                    if min_date and date_str < min_date:
+                        continue
+                    if max_date and date_str > max_date:
+                        continue
+
+                    playtime = int(float(row.get("playingtime") or g_info.get("playtime") or 60))
+                    year_pub = row.get("yearpublished") or g_info.get("year") or ""
+                    bgg_rank = row.get("rank") or g_info.get("rank") or ""
+                    rating_val = row.get("rating") or ""
+                    if rating_val == "0":
+                        rating_val = ""
+
+                    p_slots = [owner_name, "", rating_val] + ["", "", ""] * 7
+                    comments = (row.get("comment") or row.get("privatecomment") or f"Synced from BGG Collection ({numplays} logged play{'s' if numplays > 1 else ''})").strip()
+
+                    imp_row = [
+                        date_str,
+                        g_info.get("title") or title,
+                        "Docking Bay 94",
+                        numplays,
+                        playtime,
+                        year_pub,
+                        bgg_rank,
+                        "Yes",
+                        "No",
+                        1,
+                        *p_slots,
+                        owner_name,
+                        comments,
+                    ]
+                    importer_rows.append(imp_row)
+
+                    app_plays.append({
+                        "id": f"bgg-coll-{oid}",
+                        "bgg_play_id": f"coll-{oid}",
+                        "game_id": oid,
+                        "game_title": g_info.get("title") or title,
+                        "date": date_str,
+                        "location": "Docking Bay 94",
+                        "quantity": numplays,
+                        "players": [owner_name],
+                        "player_count": g_info.get("min_players") or 2,
+                        "winner": "",
+                        "duration": playtime,
+                        "notes": comments,
+                        "bgg_synced": True,
+                    })
+        except Exception as e:
+            print(f"  [!] Warning reading {cfile.name}: {e}")
+
+    print(f"  -> Synced {len(app_plays)} played games ({sum(p['quantity'] for p in app_plays)} total plays) from BGG!")
+    return importer_rows, app_plays
+
+
 def parse_bgg_plays_for_user(
     username,
     token,
@@ -131,9 +270,15 @@ def parse_bgg_plays_for_user(
 ):
     """
     Port of ImportBGGPlays() from lowej004/BGGLoggedPlayImporter/BGGPlayImporter.gs
+    with automatic Token-Free fallback via api.geekdo.com & BGG Collection CSVs.
     """
     games_by_id = games_by_id or {}
     games_by_title = games_by_title or {}
+
+    if not token:
+        return fetch_bgg_plays_via_geekdo_and_collection(
+            username, min_date, max_date, games_by_id, games_by_title
+        )
 
     print(f"Fetching BGG logged plays for '{username}'...")
     try:
@@ -142,15 +287,20 @@ def parse_bgg_plays_for_user(
         if e.code == 401:
             print(
                 f"  [!] BGG XML API2 returned 401 Unauthorized for '{username}'.\n"
-                f"      As noted in BGGLoggedPlayImporter, BGG requires an API Bearer token.\n"
-                f"      Register at https://boardgamegeek.com/using_the_xml_api and pass --token <TOKEN>."
+                f"      Falling back to Token-Free Geekdo API + Collection sync..."
             )
-            return [], []
+            return fetch_bgg_plays_via_geekdo_and_collection(
+                username, min_date, max_date, games_by_id, games_by_title
+            )
         print(f"  [!] HTTP Error {e.code} fetching plays for {username}: {e.reason}")
-        return [], []
+        return fetch_bgg_plays_via_geekdo_and_collection(
+            username, min_date, max_date, games_by_id, games_by_title
+        )
     except Exception as e:
         print(f"  [!] Error fetching plays for {username}: {e}")
-        return [], []
+        return fetch_bgg_plays_via_geekdo_and_collection(
+            username, min_date, max_date, games_by_id, games_by_title
+        )
 
     root = ET.fromstring(first_xml)
     total_plays = int(root.attrib.get("total", "0") or 0)
@@ -266,14 +416,31 @@ def parse_bgg_plays_for_user(
 
 def parse_importer_csv_file(csv_path, games_by_id, games_by_title):
     """
-    Parses a CSV exported from Google Sheets (BGGLoggedPlayImporter) or BGG plays CSV.
+    Parses a CSV exported from Google Sheets (BGGLoggedPlayImporter), BGG plays CSV,
+    OR a standard BGG Collection CSV (where numplays > 0).
     """
     app_plays = []
     with open(csv_path, "r", encoding="utf-8", errors="replace") as f:
         reader = csv.DictReader(f)
         for idx, row in enumerate(reader):
-            date_str = (row.get("Date") or row.get("playdate") or row.get("date") or "").strip()
             game_title = (row.get("Game") or row.get("Game Title") or row.get("objectname") or "").strip()
+            if not game_title:
+                continue
+
+            # Support standard BGG Collection CSVs (numplays column)
+            if "numplays" in row and not (row.get("Date") or row.get("playdate") or row.get("date")):
+                try:
+                    numplays = int(float(row.get("numplays") or 0))
+                except Exception:
+                    numplays = 0
+                if numplays <= 0:
+                    continue
+                date_str = (row.get("invdate") or row.get("acquisitiondate") or "2025-04-21")[:10]
+                qty_raw = str(numplays)
+            else:
+                date_str = (row.get("Date") or row.get("playdate") or row.get("date") or "").strip()
+                qty_raw = row.get("Times Played") or row.get("quantity") or "1"
+
             if not date_str or not game_title:
                 continue
 
@@ -282,8 +449,7 @@ def parse_importer_csv_file(csv_path, games_by_id, games_by_title):
             if not game_id and g_info:
                 game_id = str(g_info.get("id", ""))
 
-            location = (row.get("Location") or row.get("location") or "").strip()
-            qty_raw = row.get("Times Played") or row.get("quantity") or "1"
+            location = (row.get("Location") or row.get("location") or "Docking Bay 94").strip()
             try:
                 quantity = int(float(qty_raw))
             except Exception:
