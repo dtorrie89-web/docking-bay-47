@@ -10,6 +10,7 @@ import json
 import csv
 import re
 import time
+import ssl
 import urllib.request
 from pathlib import Path
 
@@ -22,6 +23,17 @@ CACHE_DIR.mkdir(exist_ok=True)
 
 IMAGE_CACHE_FILE = CACHE_DIR / "game_images.json"
 MANUALS_CACHE_FILE = CACHE_DIR / "game_manuals.json"
+HIGHRES_CACHE_FILE = CACHE_DIR / "highres_images.json"
+
+ssl_ctx = ssl.create_default_context()
+ssl_ctx.check_hostname = False
+ssl_ctx.verify_mode = ssl.CERT_NONE
+
+HEADERS = {
+    "User-Agent": "Mozilla/5.0 (Macintosh; Intel Mac OS X 10_15_7) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/122.0.0.0 Safari/537.36",
+    "Accept": "application/json",
+    "Referer": "https://boardgamegeek.com/"
+}
 
 def load_manuals_cache():
     if MANUALS_CACHE_FILE.exists():
@@ -32,29 +44,52 @@ def load_manuals_cache():
             pass
     return {}
 
-def find_collection_csv():
-    """Find the collection CSV file regardless of casing."""
-    candidates = [
-        BASE_DIR / "Darren's Collection.csv",
-        BASE_DIR / "Darren's collection.csv",
-    ]
-    for c in candidates:
-        if c.exists():
-            return c
-    # Fallback to any .csv in BASE_DIR that is not games.csv
-    for f in BASE_DIR.glob("*.csv"):
-        if f.name.lower() != "games.csv":
-            return f
-    return None
+def extract_owner_from_path(csv_path):
+    """Extract owner name from filename (e.g. 'Billy\'s Collection.csv' -> 'Billy')."""
+    stem = csv_path.stem
+    m = re.match(r"^([a-zA-Z0-9\s_-]+?)('s|\b)\s*collection", stem, re.IGNORECASE)
+    if m:
+        owner = m.group(1).strip()
+        if owner:
+            return owner
+    cleaned = re.sub(r"['’]s?\s+collection.*$", "", stem, flags=re.IGNORECASE).strip()
+    return cleaned if cleaned else "Darren"
+
+def find_collection_csvs():
+    """Find all collection CSV files in BASE_DIR (e.g. Darren's, Billy's, etc.)."""
+    csvs = []
+    for f in sorted(BASE_DIR.glob("*.csv")):
+        name_lower = f.name.lower()
+        if "collection" in name_lower and name_lower != "games.csv":
+            csvs.append(f)
+    if not csvs:
+        for c in [BASE_DIR / "Darren's Collection.csv", BASE_DIR / "Darren's collection.csv"]:
+            if c.exists():
+                csvs.append(c)
+    if not csvs:
+        for f in sorted(BASE_DIR.glob("*.csv")):
+            if f.name.lower() != "games.csv":
+                csvs.append(f)
+    return csvs
 
 def load_image_cache():
+    cache = {}
     if IMAGE_CACHE_FILE.exists():
         try:
             with open(IMAGE_CACHE_FILE, "r", encoding="utf-8") as f:
-                return json.load(f)
+                cache.update(json.load(f))
         except Exception:
             pass
-    return {}
+    if HIGHRES_CACHE_FILE.exists():
+        try:
+            with open(HIGHRES_CACHE_FILE, "r", encoding="utf-8") as f:
+                h_cache = json.load(f)
+                for k, v in h_cache.items():
+                    if k not in cache or not cache[k]:
+                        cache[k] = v
+        except Exception:
+            pass
+    return cache
 
 def save_image_cache(cache):
     with open(IMAGE_CACHE_FILE, "w", encoding="utf-8") as f:
@@ -66,15 +101,23 @@ def fetch_image(game_id, cache):
     if game_id in cache and cache[game_id]:
         return cache[game_id]
         
-    url = f"https://api.geekdo.com/api/geekitems?objectid={game_id}&objecttype=thing"
-    req = urllib.request.Request(url, headers={"User-Agent": "Mozilla/5.0"})
+    url = f"https://boardgamegeek.com/api/geekitems?objectid={game_id}&objecttype=thing"
+    req = urllib.request.Request(url, headers=HEADERS)
     try:
-        with urllib.request.urlopen(req, timeout=8) as resp:
-            data = json.loads(resp.read())
+        with urllib.request.urlopen(req, context=ssl_ctx, timeout=8) as resp:
+            data = json.loads(resp.read().decode("utf-8", errors="ignore"))
             item = data.get("item", {})
             images = item.get("images", {})
-            thumb = images.get("thumb") or images.get("square200") or images.get("original") or ""
+            thumb = (
+                item.get("imageurl@2x") or
+                item.get("imageurl") or
+                images.get("previewthumb") or
+                images.get("square200") or
+                images.get("original") or
+                images.get("thumb") or ""
+            )
             cache[game_id] = thumb
+            time.sleep(0.15)
             return thumb
     except Exception as e:
         print(f"  [Notice] Could not fetch image for {game_id}: {e}")
@@ -419,12 +462,12 @@ function doGet(e) {{
     print(f"Generated google_apps_script.js with {num_games} games.")
 
 def main():
-    csv_file = find_collection_csv()
-    if not csv_file:
+    csv_files = find_collection_csvs()
+    if not csv_files:
         print("Error: No collection CSV found in workspace directory.")
         return
 
-    print(f"Reading collection from: {csv_file.name}...")
+    print(f"Discovered {len(csv_files)} collection CSV file(s): {[f.name for f in csv_files]}")
     image_cache = load_image_cache()
 
     # Load plays data
@@ -462,110 +505,117 @@ def main():
             pass
 
     games_raw = []
-    with open(csv_file, "r", encoding="utf-8", errors="replace") as f:
-        reader = csv.DictReader(f)
-        fieldnames = [col.strip() for col in (reader.fieldnames or [])]
+    for csv_file in csv_files:
+        owner_name = extract_owner_from_path(csv_file)
+        print(f"Reading collection for '{owner_name}' from: {csv_file.name}...")
+        with open(csv_file, "r", encoding="utf-8", errors="replace") as f:
+            reader = csv.DictReader(f)
+            fieldnames = [col.strip() for col in (reader.fieldnames or [])]
 
-        is_curated_format = "Title" in fieldnames or "Play Time (min)" in fieldnames
+            is_curated_format = "Title" in fieldnames or "Play Time (min)" in fieldnames
+            added_for_owner = 0
 
-        for row in reader:
-            if is_curated_format:
-                title = row.get("Title", "").strip()
-                if not title:
-                    continue
-                
-                url = row.get("BGG URL", "").strip()
-                m = re.search(r'/boardgame/(\d+)', url)
-                gid = m.group(1) if m else ""
-                if not gid:
-                    # fallback slug
-                    gid = re.sub(r'[^a-zA-Z0-9]', '', title).lower()
+            for row in reader:
+                if is_curated_format:
+                    title = row.get("Title", "").strip()
+                    if not title:
+                        continue
+                    
+                    url = row.get("BGG URL", "").strip()
+                    m = re.search(r'/boardgame/(\d+)', url)
+                    gid = m.group(1) if m else ""
+                    if not gid:
+                        # fallback slug
+                        gid = re.sub(r'[^a-zA-Z0-9]', '', title).lower()
 
-                itemtype = row.get("Type", "standalone").strip()
-                owners_raw = row.get("Owners", "Darren")
-                owners = [o.strip() for o in owners_raw.split(",") if o.strip()] or ["Darren"]
+                    itemtype = row.get("Type", "standalone").strip()
+                    owners_raw = row.get("Owners", owner_name)
+                    owners = [o.strip() for o in owners_raw.split(",") if o.strip()] or [owner_name]
 
-                min_players = to_int(row.get("Min Players"), 1)
-                max_players = to_int(row.get("Max Players"), 4)
-                best_raw = row.get("Best Player Count", "")
-                best_players = [p.strip() for p in best_raw.split(",") if p.strip()] if best_raw else []
+                    min_players = to_int(row.get("Min Players"), 1)
+                    max_players = to_int(row.get("Max Players"), 4)
+                    best_raw = row.get("Best Player Count", "")
+                    best_players = [p.strip() for p in best_raw.split(",") if p.strip()] if best_raw else []
 
-                playtime = to_int(row.get("Play Time (min)"), 60)
-                weight = to_float(row.get("Weight (1.0-5.0)"))
-                rating = to_float(row.get("BGG Rating"))
-                rank_val = to_int(row.get("BGG Rank"))
-                rank = rank_val if rank_val > 0 else None
+                    playtime = to_int(row.get("Play Time (min)"), 60)
+                    weight = to_float(row.get("Weight (1.0-5.0)"))
+                    rating = to_float(row.get("BGG Rating"))
+                    rank_val = to_int(row.get("BGG Rank"))
+                    rank = rank_val if rank_val > 0 else None
 
-                games_raw.append({
-                    "id": gid,
-                    "title": title,
-                    "itemtype": itemtype,
-                    "year": None,
-                    "min_players": min_players,
-                    "max_players": max_players,
-                    "min_playtime": playtime,
-                    "max_playtime": playtime,
-                    "playtime": playtime,
-                    "weight": weight,
-                    "rating": rating,
-                    "rank": rank,
-                    "best_players": best_players,
-                    "recommended_players": [],
-                    "owners": owners,
-                    "thumbnail": "",
-                    "categories": [],
-                    "mechanics": [],
-                    "plays": 0,
-                    "last_played": None
-                })
-            else:
-                # Raw BGG export format
-                if row.get("own") != "1":
-                    continue
-                gid = row.get("objectid", "").strip()
-                title = row.get("objectname", "").strip()
-                itemtype = row.get("itemtype", "standalone").strip()
-                if not title:
-                    continue
+                    games_raw.append({
+                        "id": gid,
+                        "title": title,
+                        "itemtype": itemtype,
+                        "year": None,
+                        "min_players": min_players,
+                        "max_players": max_players,
+                        "min_playtime": playtime,
+                        "max_playtime": playtime,
+                        "playtime": playtime,
+                        "weight": weight,
+                        "rating": rating,
+                        "rank": rank,
+                        "best_players": best_players,
+                        "recommended_players": [],
+                        "owners": owners,
+                        "thumbnail": "",
+                        "categories": [],
+                        "mechanics": [],
+                        "plays": 0,
+                        "last_played": None
+                    })
+                    added_for_owner += 1
+                else:
+                    # Raw BGG export format
+                    if row.get("own") != "1":
+                        continue
+                    gid = row.get("objectid", "").strip()
+                    title = row.get("objectname", "").strip()
+                    itemtype = row.get("itemtype", "standalone").strip()
+                    if not title:
+                        continue
 
-                avgweight = to_float(row.get("avgweight"))
-                avgrating = to_float(row.get("average"))
-                min_players = to_int(row.get("minplayers"), 1)
-                max_players = to_int(row.get("maxplayers"), 4)
-                playtime = to_int(row.get("playingtime"), 60)
-                min_time = to_int(row.get("minplaytime")) or playtime
-                max_time = to_int(row.get("maxplaytime")) or playtime
-                year = to_int(row.get("yearpublished")) or None
-                rank_val = to_int(row.get("rank"))
-                rank = rank_val if rank_val > 0 else None
+                    avgweight = to_float(row.get("avgweight"))
+                    avgrating = to_float(row.get("average"))
+                    min_players = to_int(row.get("minplayers"), 1)
+                    max_players = to_int(row.get("maxplayers"), 4)
+                    playtime = to_int(row.get("playingtime"), 60)
+                    min_time = to_int(row.get("minplaytime")) or playtime
+                    max_time = to_int(row.get("maxplaytime")) or playtime
+                    year = to_int(row.get("yearpublished")) or None
+                    rank_val = to_int(row.get("rank"))
+                    rank = rank_val if rank_val > 0 else None
 
-                best_raw = row.get("bggbestplayers", "")
-                best_players = [p.strip() for p in best_raw.split(",") if p.strip()] if best_raw else []
-                rec_raw = row.get("bggrecplayers", "")
-                rec_players = [p.strip() for p in rec_raw.split(",") if p.strip()] if rec_raw else []
+                    best_raw = row.get("bggbestplayers", "")
+                    best_players = [p.strip() for p in best_raw.split(",") if p.strip()] if best_raw else []
+                    rec_raw = row.get("bggrecplayers", "")
+                    rec_players = [p.strip() for p in rec_raw.split(",") if p.strip()] if rec_raw else []
 
-                games_raw.append({
-                    "id": gid,
-                    "title": title,
-                    "itemtype": itemtype,
-                    "year": year,
-                    "min_players": min_players,
-                    "max_players": max_players,
-                    "min_playtime": min_time,
-                    "max_playtime": max_time,
-                    "playtime": playtime or max_time or 60,
-                    "weight": avgweight,
-                    "rating": avgrating,
-                    "rank": rank,
-                    "best_players": best_players,
-                    "recommended_players": rec_players,
-                    "owners": ["Darren"],
-                    "thumbnail": "",
-                    "categories": [],
-                    "mechanics": [],
-                    "plays": 0,
-                    "last_played": None
-                })
+                    games_raw.append({
+                        "id": gid,
+                        "title": title,
+                        "itemtype": itemtype,
+                        "year": year,
+                        "min_players": min_players,
+                        "max_players": max_players,
+                        "min_playtime": min_time,
+                        "max_playtime": max_time,
+                        "playtime": playtime or max_time or 60,
+                        "weight": avgweight,
+                        "rating": avgrating,
+                        "rank": rank,
+                        "best_players": best_players,
+                        "recommended_players": rec_players,
+                        "owners": [owner_name],
+                        "thumbnail": "",
+                        "categories": [],
+                        "mechanics": [],
+                        "plays": 0,
+                        "last_played": None
+                    })
+                    added_for_owner += 1
+        print(f"  -> Added {added_for_owner} games owned by {owner_name}.")
 
     # Deduplicate and merge multiple copies
     merged_games = {}

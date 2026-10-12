@@ -4,8 +4,9 @@ __pycache__/
 
 # Private unencrypted master files (keep strictly local)
 app.html
-Darren's Collection.csv
-Darren's collection.csv
+*Collection.csv
+*collection.csv
+*.csv
 data/
 cache/
 *.pem
