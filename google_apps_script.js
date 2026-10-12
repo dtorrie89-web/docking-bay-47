@@ -32,11 +32,356 @@ function onOpen() {
   try {
     SpreadsheetApp.getUi()
       .createMenu("🚀 Game Night Hub")
-      .addItem("1. Run Initial Setup (Build Tabs & 74 Games)", "setupGameNightSpreadsheet")
+      .addItem("1. Run Initial Setup (Build Tabs & 157 Games)", "setupGameNightSpreadsheet")
       .addSeparator()
-      .addItem("2. Setup Info", "showSetupAlert")
+      .addItem("2. Import BGG Logged Plays (BGGLoggedPlayImporter)", "openBGGPlayImporterDialog")
+      .addItem("3. Configure BGG API Bearer Token", "promptBGGToken")
+      .addSeparator()
+      .addItem("4. Setup Info", "showSetupAlert")
       .addToUi();
   } catch(e) {}
+}
+
+function promptBGGToken() {
+  const ui = SpreadsheetApp.getUi();
+  const props = PropertiesService.getUserProperties();
+  const current = props.getProperty("BGG_API_TOKEN") || "";
+  const resp = ui.prompt(
+    "BGG XML API2 Bearer Token",
+    "Enter your BoardGameGeek API Bearer Token (from https://boardgamegeek.com/using_the_xml_api):\n" +
+    (current ? "(Current token is saved)" : ""),
+    ui.ButtonSet.OK_CANCEL
+  );
+  if (resp.getSelectedButton() === ui.Button.OK) {
+    const val = resp.getResponseText().replace(/^Bearer\s+/i, "").trim();
+    if (val) {
+      props.setProperty("BGG_API_TOKEN", val);
+      ui.alert("BGG Bearer Token saved! You can now run 'Import BGG Logged Plays'.");
+    }
+  }
+}
+
+/**
+ * Opens the BGGLoggedPlayImporter dialog (adapted from lowej004/BGGLoggedPlayImporter)
+ */
+function openBGGPlayImporterDialog() {
+  const props = PropertiesService.getUserProperties();
+  const usernameVar = props.getProperty("BGGUsername") || "Dtorrie89";
+  const minDateVar = props.getProperty("BGGMinDate") || "2020-01-01";
+  const maxDateVar = Utilities.formatDate(new Date(), Session.getScriptTimeZone(), "yyyy-MM-dd");
+  const tokenVar = props.getProperty("BGG_API_TOKEN") || "";
+
+  const htmlStr = `
+    <div style="font-family:Roboto,Arial,sans-serif; padding:8px; color:#1e293b; font-size:13px;">
+      <p style="margin-top:0; color:#475569;">
+        Pulls logged play history from BoardGameGeek (via <b>lowej004/BGGLoggedPlayImporter</b>) into the <b>BGG Logged Plays</b> tab and syncs into your <b>Plays Log</b> &amp; web app.
+      </p>
+      <table style="width:100%; border-collapse:collapse;">
+        <tr>
+          <td style="padding:6px 0; font-weight:bold;">BGG Username:</td>
+          <td><input type="text" id="username" value="${usernameVar}" style="width:100%; padding:5px; box-sizing:border-box;"></td>
+        </tr>
+        <tr>
+          <td style="padding:6px 0; font-weight:bold;">BGG Bearer Token:</td>
+          <td><input type="password" id="token" value="${tokenVar}" placeholder="Paste token from BGG XML API" style="width:100%; padding:5px; box-sizing:border-box;"></td>
+        </tr>
+        <tr>
+          <td style="padding:6px 0;">Start Date:</td>
+          <td><input type="date" id="minDate" value="${minDateVar}" style="width:100%; padding:5px; box-sizing:border-box;"></td>
+        </tr>
+        <tr>
+          <td style="padding:6px 0;">End Date:</td>
+          <td><input type="date" id="maxDate" value="${maxDateVar}" style="width:100%; padding:5px; box-sizing:border-box;"></td>
+        </tr>
+        <tr>
+          <td style="padding:4px 0;">Include Playtime:</td>
+          <td><input type="checkbox" id="incPlaytime" checked></td>
+        </tr>
+        <tr>
+          <td style="padding:4px 0;">Include Year &amp; Rank:</td>
+          <td><input type="checkbox" id="incGameYearRank" checked></td>
+        </tr>
+        <tr>
+          <td style="padding:4px 0;">Include In Collection:</td>
+          <td><input type="checkbox" id="incInCollection" checked></td>
+        </tr>
+        <tr>
+          <td style="padding:4px 0;">Include Players &amp; Scores:</td>
+          <td><input type="checkbox" id="incPlayers" checked></td>
+        </tr>
+        <tr>
+          <td style="padding:4px 0;">Include Comments:</td>
+          <td><input type="checkbox" id="incComments" checked></td>
+        </tr>
+        <tr>
+          <td style="padding:4px 0; font-weight:bold; color:#0f766e;">Sync to Game Night Plays Log:</td>
+          <td><input type="checkbox" id="syncToPlaysLog" checked></td>
+        </tr>
+      </table>
+      <div style="margin-top:14px; display:flex; justify-content:space-between; align-items:center;">
+        <span id="statusMsg" style="color:#2563eb; font-weight:bold;"></span>
+        <button id="submitButton" onclick="runImport()" style="background:#2563eb; color:#fff; border:none; padding:8px 16px; border-radius:5px; font-weight:bold; cursor:pointer;">Import Plays from BGG</button>
+      </div>
+    </div>
+    <script>
+      function runImport() {
+        document.getElementById('submitButton').disabled = true;
+        document.getElementById('statusMsg').textContent = 'Importing from BGG...';
+        var u = document.getElementById('username').value.trim();
+        var t = document.getElementById('token').value.trim();
+        var minD = document.getElementById('minDate').value;
+        var maxD = document.getElementById('maxDate').value;
+        var incTime = document.getElementById('incPlaytime').checked;
+        var incYR = document.getElementById('incGameYearRank').checked;
+        var incColl = document.getElementById('incInCollection').checked;
+        var incPl = document.getElementById('incPlayers').checked;
+        var incComm = document.getElementById('incComments').checked;
+        var syncLog = document.getElementById('syncToPlaysLog').checked;
+
+        google.script.run
+          .withSuccessHandler(function(msg) {
+            document.getElementById('statusMsg').style.color = '#059669';
+            document.getElementById('statusMsg').textContent = msg;
+            document.getElementById('submitButton').disabled = false;
+          })
+          .withFailureHandler(function(err) {
+            document.getElementById('statusMsg').style.color = '#dc2626';
+            document.getElementById('statusMsg').textContent = 'Error: ' + err.message;
+            document.getElementById('submitButton').disabled = false;
+          })
+          .ImportBGGPlays(u, t, minD, maxD, incTime, incYR, incYR, incColl, true, incPl, incPl, incComm, syncLog);
+      }
+    </script>
+  `;
+  const html = HtmlService.createHtmlOutput(htmlStr).setWidth(420).setHeight(430);
+  SpreadsheetApp.getUi().showModalDialog(html, "BGG Logged Play Importer");
+}
+
+/**
+ * Port of lowej004/BGGLoggedPlayImporter (BGGPlayImporter.gs) integrated with Docking Bay 94
+ */
+function ImportBGGPlays(
+  username,
+  tokenInput,
+  minDate,
+  maxDate,
+  includePlaytime,
+  includeGameYear,
+  includeGameRank,
+  includeInCollection,
+  includeNewGame,
+  includePlayers,
+  includePlayerScoresAndRatings,
+  includeComments,
+  syncToPlaysLog
+) {
+  const ss = SpreadsheetApp.getActiveSpreadsheet();
+  const userProperties = PropertiesService.getUserProperties();
+  if (tokenInput) {
+    userProperties.setProperty("BGG_API_TOKEN", tokenInput.replace(/^Bearer\s+/i, "").trim());
+  }
+  const token = userProperties.getProperty("BGG_API_TOKEN") || "";
+  if (!token) {
+    throw new Error("Missing BGG Bearer Token. Register at https://boardgamegeek.com/using_the_xml_api and enter your token.");
+  }
+
+  userProperties.setProperties({
+    BGGUsername: username,
+    BGGMinDate: minDate,
+    BGGMaxDate: maxDate
+  });
+
+  let bggSheet = ss.getSheetByName("BGG Logged Plays");
+  if (!bggSheet) {
+    bggSheet = ss.insertSheet("BGG Logged Plays");
+  }
+  bggSheet.clearContents();
+
+  const opt = {
+    method: "get",
+    headers: {
+      Authorization: "Bearer " + token
+    },
+    muteHttpExceptions: true
+  };
+
+  // Build fast lookup from Library tab so we don't hammer BGG thing API per play
+  const libSheet = ss.getSheetByName("Library");
+  const libIds = new Set();
+  if (libSheet && libSheet.getLastRow() > 1) {
+    const libValues = libSheet.getRange(2, 1, libSheet.getLastRow() - 1, 14).getValues();
+    for (let r = 0; r < libValues.length; r++) {
+      const urlStr = String(libValues[r][13] || "");
+      const m = urlStr.match(/\/boardgame\/(\d+)/);
+      if (m) libIds.add(m[1]);
+    }
+  }
+
+  const firstUrl =
+    "https://boardgamegeek.com/xmlapi2/plays?username=" +
+    encodeURIComponent(username) +
+    (minDate ? "&mindate=" + minDate : "") +
+    (maxDate ? "&maxdate=" + maxDate : "") +
+    "&page=1";
+
+  const firstResp = UrlFetchApp.fetch(firstUrl, opt);
+  if (firstResp.getResponseCode() === 401) {
+    throw new Error("BGG returned 401 Unauthorized. Please check your BGG Bearer Token.");
+  }
+  const firstDoc = XmlService.parse(firstResp.getContentText());
+  const firstRoot = firstDoc.getRootElement();
+  const totalNumberOfPlays = parseInt(firstRoot.getAttribute("total").getValue(), 10) || 0;
+  const totalNumberOfPages = Math.ceil(totalNumberOfPlays / 100);
+
+  // Header row matching lowej004/BGGLoggedPlayImporter
+  const headerRow = ["Date", "Game", "Location", "Times Played"];
+  if (includePlaytime) headerRow.push("Playtime");
+  if (includeGameYear) headerRow.push("Year Published");
+  if (includeGameRank) headerRow.push("Current BGG Rank");
+  if (includeInCollection) headerRow.push("Is In Collection");
+  if (includeNewGame) headerRow.push("Is New Game");
+  headerRow.push("Number of Players");
+  if (includePlayers) {
+    if (includePlayerScoresAndRatings) {
+      for (let p = 1; p <= 8; p++) {
+        headerRow.push("Player " + p, "Player " + p + " Score", "Player " + p + " Rating");
+      }
+      headerRow.push("Winner");
+    } else {
+      for (let p = 1; p <= 8; p++) headerRow.push("Player " + p);
+      headerRow.push("Winner");
+    }
+  }
+  if (includeComments) headerRow.push("Comments");
+  bggSheet.appendRow(headerRow);
+  bggSheet.getRange(1, 1, 1, headerRow.length).setBackground("#1e293b").setFontColor("#ffffff").setFontWeight("bold");
+
+  // Deduplicate against Plays Log if syncing
+  const playsSheet = ss.getSheetByName("Plays Log");
+  const existingPlayKeys = new Set();
+  if (playsSheet && playsSheet.getLastRow() > 1) {
+    const pVals = playsSheet.getRange(2, 1, playsSheet.getLastRow() - 1, 2).getValues();
+    for (let i = 0; i < pVals.length; i++) {
+      const d = pVals[i][0] instanceof Date
+        ? Utilities.formatDate(pVals[i][0], Session.getScriptTimeZone(), "yyyy-MM-dd")
+        : String(pVals[i][0]);
+      const g = String(pVals[i][1] || "").toLowerCase().trim();
+      existingPlayKeys.add(d + "|" + g);
+    }
+  }
+
+  let importedCount = 0;
+  for (let h = 1; h <= totalNumberOfPages; h++) {
+    const pageUrl =
+      "https://boardgamegeek.com/xmlapi2/plays?username=" +
+      encodeURIComponent(username) +
+      (minDate ? "&mindate=" + minDate : "") +
+      (maxDate ? "&maxdate=" + maxDate : "") +
+      "&page=" + h;
+    const xml = (h === 1) ? firstResp.getContentText() : UrlFetchApp.fetch(pageUrl, opt).getContentText();
+    const doc = XmlService.parse(xml);
+    const entries = doc.getRootElement().getChildren("play");
+
+    for (let i = 0; i < entries.length; i++) {
+      const entry = entries[i];
+      const date = entry.getAttribute("date") ? entry.getAttribute("date").getValue() : "";
+      const location = entry.getAttribute("location") ? entry.getAttribute("location").getValue() : "";
+      const timesPlayed = entry.getAttribute("quantity") ? entry.getAttribute("quantity").getValue() : "1";
+      const item = entry.getChildren("item")[0];
+      const game = item.getAttribute("name").getValue();
+      const gameId = item.getAttribute("objectid").getValue();
+
+      const thisRow = [date, game, location, timesPlayed];
+      const rawLength = entry.getAttribute("length") ? entry.getAttribute("length").getValue() : "0";
+      const playtime = rawLength !== "0" ? rawLength : "";
+
+      if (includePlaytime) thisRow.push(playtime);
+      if (includeGameYear) thisRow.push("");
+      if (includeGameRank) thisRow.push("");
+      if (includeInCollection) thisRow.push(libIds.has(gameId) ? "Yes" : "No");
+
+      let isNew = "No";
+      let numberOfPlayers = 1;
+      const playerNames = [];
+      let winner = "";
+      const playersNode = entry.getChild("players");
+
+      if (playersNode !== null) {
+        const players = playersNode.getChildren("player");
+        numberOfPlayers = players.length || 1;
+        for (let pIdx = 0; pIdx < players.length; pIdx++) {
+          const pl = players[pIdx];
+          const pUname = pl.getAttribute("username") ? pl.getAttribute("username").getValue() : "";
+          const pName = pl.getAttribute("name") ? pl.getAttribute("name").getValue() : (pUname || ("Player " + (pIdx + 1)));
+          if (pUname.toLowerCase() === username.toLowerCase() && pl.getAttribute("new") && pl.getAttribute("new").getValue() === "1") {
+            isNew = "Yes";
+          }
+          if (pl.getAttribute("win") && pl.getAttribute("win").getValue() === "1") {
+            winner = winner ? (winner + ", " + pName) : pName;
+          }
+          playerNames.push(pName);
+        }
+
+        if (includeNewGame) thisRow.push(isNew);
+        thisRow.push(numberOfPlayers);
+
+        if (includePlayers) {
+          for (let pIdx = 0; pIdx < 8; pIdx++) {
+            const pl = players[pIdx];
+            const pName = pl ? (pl.getAttribute("name") ? pl.getAttribute("name").getValue() : "") : "";
+            const pScore = pl ? (pl.getAttribute("score") ? pl.getAttribute("score").getValue() : "") : "";
+            const pRatingRaw = pl ? (pl.getAttribute("rating") ? pl.getAttribute("rating").getValue() : "0") : "0";
+            const pRating = pRatingRaw !== "0" ? pRatingRaw : "";
+            if (includePlayerScoresAndRatings) {
+              thisRow.push(pName, pScore, pRating);
+            } else {
+              thisRow.push(pName);
+            }
+          }
+          thisRow.push(winner);
+        }
+      } else {
+        if (includeNewGame) thisRow.push(isNew);
+        thisRow.push(1);
+        if (includePlayers) {
+          for (let pIdx = 0; pIdx < 8; pIdx++) {
+            if (includePlayerScoresAndRatings) thisRow.push("", "", "");
+            else thisRow.push("");
+          }
+          thisRow.push("");
+        }
+      }
+
+      let comments = "";
+      if (entry.getChildren("comments").length > 0) {
+        comments = entry.getChildren("comments")[0].getText();
+      }
+      if (includeComments) thisRow.push(comments);
+
+      bggSheet.appendRow(thisRow);
+      importedCount++;
+
+      if (syncToPlaysLog && playsSheet) {
+        const key = date + "|" + game.toLowerCase().trim();
+        if (!existingPlayKeys.has(key)) {
+          existingPlayKeys.add(key);
+          playsSheet.appendRow([
+            date,
+            game,
+            playerNames.length > 0 ? playerNames.join(", ") : username,
+            numberOfPlayers,
+            winner,
+            playtime || 60,
+            comments,
+            "Yes"
+          ]);
+        }
+      }
+    }
+  }
+
+  bggSheet.autoResizeColumns(1, Math.min(headerRow.length, 15));
+  return "Imported " + importedCount + " BGG plays for " + username + "!";
 }
 
 function showSetupAlert() {

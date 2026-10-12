@@ -12,6 +12,7 @@ echo " Docking Bay 94 - Refreshing Game Collection"
 echo "================================================"
 echo ""
 
+python3 import_bgg_plays.py --no-rebuild
 python3 process_darren_collection.py
 
 echo ""
