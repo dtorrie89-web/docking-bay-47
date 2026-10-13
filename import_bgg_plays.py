@@ -233,6 +233,8 @@ def fetch_bgg_plays_via_geekdo_and_collection(
                 winners = []
                 seen_winners_lower = set()
                 p_slots = []
+                player_scores = {}
+                new_players = []
                 is_new_game = "No"
 
                 acct_owner = username_map.get(str(pl.get("_acct_user") or "").lower(), "Darren")
@@ -263,6 +265,10 @@ def fetch_bgg_plays_via_geekdo_and_collection(
                         if p_name.lower() not in seen_names_lower:
                             seen_names_lower.add(p_name.lower())
                             clean_players.append(p_name)
+                        if score_val:
+                            player_scores[p_name] = score_val
+                        if str(p_obj.get("new") or "0") == "1" and p_name not in new_players:
+                            new_players.append(p_name)
                         if str(p_obj.get("win") or "0") == "1" and p_name.lower() not in seen_winners_lower:
                             seen_winners_lower.add(p_name.lower())
                             winners.append(p_name)
@@ -314,7 +320,7 @@ def fetch_bgg_plays_via_geekdo_and_collection(
                 ]
                 importer_rows.append(imp_row)
 
-                app_plays.append({
+                play_entry = {
                     "id": f"bgg-{play_id}" if play_id else f"bgg-{date_str}-{oid}",
                     "bgg_play_id": play_id,
                     "game_id": oid,
@@ -328,7 +334,14 @@ def fetch_bgg_plays_via_geekdo_and_collection(
                     "duration": playtime,
                     "notes": comments,
                     "bgg_synced": True,
-                })
+                }
+                if player_scores:
+                    play_entry["player_scores"] = player_scores
+                if new_players:
+                    play_entry["new_players"] = new_players
+                if is_new_game == "Yes":
+                    play_entry["is_new_game"] = True
+                app_plays.append(play_entry)
 
             if app_plays:
                 print(f"  -> Synced {len(app_plays)} logged BGG sessions ({sum(p['quantity'] for p in app_plays)} total plays) with full player rosters!")

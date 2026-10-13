@@ -678,7 +678,7 @@ function setupGameNightSpreadsheet() {
     ["2026-05-28", "Stationfall", "Andy, Ben, Billy, Darren, Jon", 5, "", 150, "", "Yes"],
     ["2026-05-21", "Joyride: Survival of the Fastest", "Andy, Billy, Darren, Jon, McKay", 5, "Darren", 60, "", "Yes"],
     ["2026-05-14", "Adrenaline", "Billy, Clayton, Darren, Sam", 5, "Billy", 60, "", "Yes"],
-    ["2026-05-14", "Excalibur", "Andy, Billy, Clayton, Danny, Darren, Jon, Sam", 8, "Billy, Danny", 25, "", "Yes"],
+    ["2026-05-14", "Excalibur", "Andy, Billy, Clayton, Danny, Darren, Jon, Sam", 8, "Billy, Darren", 25, "", "Yes"],
     ["2026-03-26", "Stationfall", "Andy, Billy, Danny, Darren, Devin, Jon", 6, "", 200, "", "Yes"],
     ["2026-01-15", "The Reckoners", "Billy, Danny, Darren, Jon", 4, "", 100, "", "Yes"],
     ["2025-12-28", "Trekking the National Parks: Third Edition", "Carver West, Darren, Jonathan West", 3, "Jonathan West", 60, "", "Yes"],
