@@ -1100,6 +1100,64 @@ def main():
     import download_manuals
     download_manuals.ensure_manuals_for_games(games)
 
+    # Pair owned expansions to their parent base game
+    print("Pairing expansions to base games...")
+    base_games_list = [g for g in games if g.get("itemtype") != "expansion" and not g.get("is_expansion")]
+    base_by_title_lower = {b["title"].lower().strip(): b for b in base_games_list}
+    explicit_parent_map = {
+        "eclipse: rise of the ancients": "Eclipse: New Dawn for the Galaxy",
+        "eclipse: shadow of the rift": "Eclipse: New Dawn for the Galaxy",
+        "eclipse: ship pack one": "Eclipse: New Dawn for the Galaxy",
+        "hamlet: by the lake": "Hamlet: The Village Building Game",
+        "heat: heavy rain": "Heat: Pedal to the Metal",
+        "heat: tunnel vision": "Heat: Pedal to the Metal",
+        "star wars: unlimited – shadows of the galaxy": "Star Wars: Unlimited – Intro Battle: Hoth",
+        "settlers of new catan (fan expansion for catan)": None
+    }
+
+    for g in games:
+        g["expansions"] = []
+        g["parent_game_id"] = None
+        g["parent_game_title"] = None
+
+    for exp in games:
+        if exp.get("itemtype") != "expansion" and not exp.get("is_expansion"):
+            continue
+        exp_title = exp["title"].strip()
+        exp_lower = exp_title.lower()
+        matched_base = None
+
+        if exp_lower in explicit_parent_map:
+            target = explicit_parent_map[exp_lower]
+            if target and target.lower() in base_by_title_lower:
+                matched_base = base_by_title_lower[target.lower()]
+
+        if not matched_base:
+            for b in base_games_list:
+                bt_lower = b["title"].lower().strip()
+                if exp_lower.startswith(bt_lower + ":") or exp_lower.startswith(bt_lower + " –") or exp_lower.startswith(bt_lower + " -") or exp_lower.startswith(bt_lower + " "):
+                    matched_base = b
+                    break
+
+        if not matched_base and ":" in exp_title:
+            prefix = exp_title.split(":")[0].strip().lower()
+            if prefix in base_by_title_lower:
+                matched_base = base_by_title_lower[prefix]
+
+        if matched_base:
+            exp["parent_game_id"] = matched_base["id"]
+            exp["parent_game_title"] = matched_base["title"]
+            matched_base["expansions"].append({
+                "id": exp["id"],
+                "title": exp["title"],
+                "year": exp.get("year"),
+                "owners": exp.get("owners", []),
+                "manual_url": exp.get("manual_url"),
+                "manual_file": exp.get("manual_file"),
+                "thumbnail": exp.get("thumbnail"),
+                "image": exp.get("image")
+            })
+
     # Sort alphabetically by title
     games_sorted = sorted(games, key=lambda x: x["title"].lower())
 
