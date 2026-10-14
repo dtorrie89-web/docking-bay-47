@@ -61,6 +61,14 @@ def save_config(cfg):
         json.dump(cfg, f, indent=2)
 
 
+def normalize_location(raw_loc):
+    """Normalize location: convert 'Home' or empty to 'Docking Bay 94'."""
+    loc = (raw_loc or "").strip()
+    if not loc or loc.lower() in ("home", "darren's home", "darren home", "home (darren)"):
+        return "Docking Bay 94"
+    return loc
+
+
 def get_api_token(cli_token=None):
     if cli_token:
         cfg = load_config()
@@ -219,7 +227,7 @@ def fetch_bgg_plays_via_geekdo_and_collection(
                 g_info = games_by_id.get(oid) or games_by_title.get(raw_title.lower()) or {}
                 game_title = g_info.get("title") or raw_title
 
-                location = (pl.get("location") or "").strip() or "Docking Bay 94"
+                location = normalize_location(pl.get("location"))
                 qty = int(float(pl.get("quantity") or 1))
                 raw_len = int(float(pl.get("length") or 0))
                 playtime = raw_len if raw_len > 0 else int(g_info.get("playtime") or 60)
@@ -412,7 +420,7 @@ def parse_bgg_plays_for_user(
         for play_el in root.findall("play"):
             play_id = play_el.attrib.get("id", "")
             date_str = play_el.attrib.get("date", "")
-            location = play_el.attrib.get("location", "")
+            location = normalize_location(play_el.attrib.get("location", ""))
             quantity = int(play_el.attrib.get("quantity", "1") or 1)
             length_raw = int(play_el.attrib.get("length", "0") or 0)
 
@@ -542,7 +550,7 @@ def parse_importer_csv_file(csv_path, games_by_id, games_by_title):
             if not game_id and g_info:
                 game_id = str(g_info.get("id", ""))
 
-            location = (row.get("Location") or row.get("location") or "Docking Bay 94").strip()
+            location = normalize_location(row.get("Location") or row.get("location"))
             try:
                 quantity = int(float(qty_raw))
             except Exception:

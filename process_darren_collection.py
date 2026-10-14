@@ -1105,6 +1105,10 @@ def main():
     base_games_list = [g for g in games if g.get("itemtype") != "expansion" and not g.get("is_expansion")]
     base_by_title_lower = {b["title"].lower().strip(): b for b in base_games_list}
     explicit_parent_map = {
+        "1817na": "1817",
+        "1817wo": "1817",
+        "deception: undercover allies": "Deception: Murder in Hong Kong",
+        "undaunted: reinforcements": "Undaunted: Normandy",
         "eclipse: rise of the ancients": "Eclipse: New Dawn for the Galaxy",
         "eclipse: shadow of the rift": "Eclipse: New Dawn for the Galaxy",
         "eclipse: ship pack one": "Eclipse: New Dawn for the Galaxy",
