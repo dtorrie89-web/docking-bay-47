@@ -51,7 +51,15 @@ const vaultHtml = `<!DOCTYPE html>
   <link href="https://fonts.googleapis.com/css2?family=Orbitron:wght@600;700;800;900&family=Rajdhani:wght@500;600;700&family=Plus+Jakarta+Sans:wght@400;500;600;700&family=JetBrains+Mono:wght@500;700&display=swap" rel="stylesheet">
   <style>
     * { box-sizing: border-box; margin: 0; padding: 0; }
+    html {
+      width: 100%;
+      max-width: 100vw;
+      overflow-x: hidden;
+      -webkit-text-size-adjust: 100%;
+    }
     body {
+      width: 100%;
+      max-width: 100vw;
       background-color: #030509;
       background-image:
         radial-gradient(1.5px 1.5px at 15% 20%, rgba(255, 255, 255, 0.85) 50%, transparent 100%),
@@ -68,7 +76,7 @@ const vaultHtml = `<!DOCTYPE html>
       display: flex;
       align-items: center;
       justify-content: center;
-      padding: 1.25rem;
+      padding: 1rem;
       position: relative;
       overflow-x: hidden;
     }
@@ -288,6 +296,25 @@ const vaultHtml = `<!DOCTYPE html>
       animation: spin 0.7s linear infinite;
     }
     @keyframes spin { to { transform: rotate(360deg); } }
+    @media (max-width: 480px) {
+      body {
+        padding: 0.75rem;
+      }
+      .vault-card {
+        padding: 1.5rem 1.15rem;
+        border-radius: 10px;
+      }
+      .vault-title {
+        font-size: 1.15rem;
+      }
+      .sector-header {
+        font-size: 0.6rem;
+      }
+      .passcode-input {
+        font-size: 16px; /* Prevents auto-zoom on iOS */
+        padding: 0.75rem 0.85rem;
+      }
+    }
   </style>
 </head>
 <body>
